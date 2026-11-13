@@ -94,9 +94,6 @@ function render(value) {
   if (value instanceof Markup) {
     return value.html;
   }
-  if (value && typeof value === "object" && "html" in value) {
-    return String(value.html);
-  }
   return escape(value);
 }
 

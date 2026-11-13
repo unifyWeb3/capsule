@@ -96,10 +96,22 @@ async function main() {
   //    against the key the Passport publishes for its DID. The key is fetched
   //    live from Kite's public directory, so this is not our own copy.
   if (receipts.attestation) {
+    const att = receipts.attestation as unknown as Attestation;
+    record(
+      "the attestation signs the head of this artifact",
+      att.head === receipts.log.head &&
+        att.message.includes(`records:${receipts.log.records}`) &&
+        att.message.includes(`chain:${receipts.chain.network}`),
+      att.head === receipts.log.head
+        ? `head ${String(att.head).slice(0, 14)}… matches the receipts' log head`
+        : `attestation head ${String(att.head).slice(0, 14)}… != log head ${String(receipts.log.head).slice(0, 14)}…`,
+    );
     try {
-      const published = await fetchPublishedKeys(receipts.attestation.did);
-      const attestation = receipts.attestation as unknown as Attestation;
-      const result = await verifyAttestation(attestation, published);
+      const published = await fetchPublishedKeys(att.did);
+      const result = await verifyAttestation(att, published, {
+        records: receipts.log.records,
+        chain: receipts.chain.network,
+      });
       record(
         "the log head is signed by the key the Passport publishes",
         result.ok,
@@ -108,7 +120,7 @@ async function main() {
           : result.reason,
       );
       const tampered = {
-        ...attestation,
+        ...att,
         head: `0x${"11".repeat(32)}`,
       } as unknown as Attestation;
       const bad = await verifyAttestation(tampered, published);

@@ -13,7 +13,7 @@
  * The hash is keccak-256, the hash the chains use, so a record hash can be
  * compared against an on-chain value without conversion.
  */
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { keccak256, toHex } from "viem";
 
@@ -88,10 +88,30 @@ export function defaultLogPath(): string {
 export class DecisionLog {
   readonly path: string;
   readonly now: () => Date;
+  /**
+   * In-process serialisation of append/rewrite. The log is the artifact;
+   * two concurrent runs must not fork it at the same seq.
+   */
+  private queue: Promise<void> = Promise.resolve();
 
   constructor(options: LogOptions = {}) {
     this.path = options.path ?? defaultLogPath();
     this.now = options.now ?? (() => new Date());
+  }
+
+  /** Runs one log mutation at a time, in the order they were issued. */
+  private async serialised<T>(work: () => Promise<T>): Promise<T> {
+    const previous = this.queue;
+    let release!: () => void;
+    this.queue = new Promise<void>((resolveTail) => {
+      release = resolveTail;
+    });
+    await previous;
+    try {
+      return await work();
+    } finally {
+      release();
+    }
   }
 
   /** Canonical payload for a record, before hashing. Stable key order. */
@@ -131,15 +151,17 @@ export class DecisionLog {
 
   /** Append one decision and return the record that was written. */
   async append(decision: Decision, session?: LogSession): Promise<LogRecord> {
-    const records = await this.read();
-    const prev = records.at(-1)?.hash ?? GENESIS;
-    const seq = records.length;
-    const at = this.now().toISOString();
-    const hash = keccak256(toHex(this.payload(seq, decision, prev, at, session)));
-    const record: LogRecord = { seq, at, decision, session, hash, prev };
-    await mkdir(dirname(this.path), { recursive: true });
-    await appendFile(this.path, `${JSON.stringify(record)}\n`, "utf8");
-    return record;
+    return this.serialised(async () => {
+      const records = await this.read();
+      const prev = records.at(-1)?.hash ?? GENESIS;
+      const seq = records.length;
+      const at = this.now().toISOString();
+      const hash = keccak256(toHex(this.payload(seq, decision, prev, at, session)));
+      const record: LogRecord = { seq, at, decision, session, hash, prev };
+      await mkdir(dirname(this.path), { recursive: true });
+      await appendFile(this.path, `${JSON.stringify(record)}\n`, "utf8");
+      return record;
+    });
   }
 
   /**
@@ -150,27 +172,38 @@ export class DecisionLog {
    * filled in at the end. Recomputing keeps the chain valid.
    */
   async rewrite(records: LogRecord[]): Promise<void> {
-    let prev = GENESIS;
-    const rebuilt: LogRecord[] = [];
-    for (let index = 0; index < records.length; index += 1) {
-      const record = records[index]!;
-      const seq = index;
-      const hash = keccak256(
-        toHex(this.payload(seq, record.decision, prev, record.at, record.session)),
+    await this.serialised(async () => {
+      let prev = GENESIS;
+      const rebuilt: LogRecord[] = [];
+      for (let index = 0; index < records.length; index += 1) {
+        const record = records[index]!;
+        const seq = index;
+        const hash = keccak256(
+          toHex(this.payload(seq, record.decision, prev, record.at, record.session)),
+        );
+        const next: LogRecord = {
+          seq,
+          at: record.at,
+          decision: record.decision,
+          session: record.session,
+          hash,
+          prev,
+        };
+        rebuilt.push(next);
+        prev = hash;
+      }
+      await mkdir(dirname(this.path), { recursive: true });
+      // Write to a sibling temp file and rename, so a crash mid-rewrite can
+      // never leave a truncated log behind: the old file survives until the
+      // rename, and rename is atomic on POSIX.
+      const temporary = `${this.path}.${process.pid}.${Date.now()}.tmp`;
+      await writeFile(
+        temporary,
+        rebuilt.map((record) => `${JSON.stringify(record)}\n`).join(""),
+        "utf8",
       );
-      const next: LogRecord = {
-        seq,
-        at: record.at,
-        decision: record.decision,
-        session: record.session,
-        hash,
-        prev,
-      };
-      rebuilt.push(next);
-      prev = hash;
-    }
-    await mkdir(dirname(this.path), { recursive: true });
-    await writeFile(this.path, rebuilt.map((record) => `${JSON.stringify(record)}\n`).join(""), "utf8");
+      await rename(temporary, this.path);
+    });
   }
 
   /**
@@ -186,7 +219,17 @@ export class DecisionLog {
   }> {
     const records = await this.read();
     let prev = GENESIS;
-    for (const record of records) {
+    for (let index = 0; index < records.length; index += 1) {
+      const record = records[index]!;
+      if (record.seq !== index) {
+        return {
+          ok: false,
+          checked: records.length,
+          brokenAt: record.seq ?? index,
+          reason: `record seq ${record.seq} does not match its position ${index}`,
+          head: null,
+        };
+      }
       const expected = keccak256(
         toHex(this.payload(record.seq, record.decision, prev, record.at, record.session)),
       );
@@ -271,14 +314,22 @@ export interface Substitution {
 }
 
 export function substitutions(records: LogRecord[]): Substitution[] {
+  // One reverse pass: for each position, the next non-note record after it.
+  const nextNonNote: Array<LogRecord | undefined> = new Array(records.length);
+  let upcoming: LogRecord | undefined;
+  for (let index = records.length - 1; index >= 0; index -= 1) {
+    nextNonNote[index] = upcoming;
+    if (records[index]!.decision.kind !== "note") {
+      upcoming = records[index];
+    }
+  }
   const out: Substitution[] = [];
-  for (const record of records) {
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index]!;
     if (record.decision.kind !== "refusal") continue;
     // The next attempt of any kind, not just the next record: a refusal
     // followed by another refusal is still the agent trying something else.
-    const next = records
-      .slice(record.seq + 1)
-      .find((candidate) => candidate.decision.kind !== "note");
+    const next = nextNonNote[index];
     let instead: Substitution["instead_of"] = null;
     if (next && next.decision.kind === "purchase") {
       instead = {

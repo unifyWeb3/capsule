@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Capsule — replay the recorded run</title>
+    <meta
+      name="description"
+      content="The recorded run, played back one decision at a time. No money moves; the data is the same /proof.json the record page reads."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0d10'/%3E%3Cpath d='M9 21V11l7 5 7-5v10' stroke='%2334d3c4' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <a class="skip" href="#replay">Skip to the replay</a>
+    <div class="shell">
+      <header>
+        <span class="wordmark">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="var(--surface-2)" />
+            <path d="M9 21V11l7 5 7-5v10" stroke="var(--settled)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Capsule
+        </span>
+        <nav class="site-nav" aria-label="Site">
+          <a href="/">The record</a>
+          <a href="/runs.html">The runs</a>
+          <a href="/replay.html" aria-current="page">Replay</a>
+          <a href="/verify.html">Verify a log</a>
+          <a href="/docs/security-model.html">Security model</a>
+          <a href="/docs/format.html">Log format</a>
+          <a href="/components.html">Components</a>
+        </nav>
+        <h1>
+          Watch the run, <span class="accent">one decision at a time.</span>
+        </h1>
+        <p class="standfirst">
+          This replays the recorded run from <code>/proof.json</code> — the same payload
+          the record page renders, played in order. <strong>No money moves</strong>; the
+          payments already happened, and the chain checks below were made when the page
+          loaded, not during the run.
+        </p>
+      </header>
+
+      <section id="replay" aria-labelledby="replay-h">
+        <h2 id="replay-h">The recorded run <span class="count" id="replay-count"></span></h2>
+        <div class="replay-controls">
+          <button id="replay-button" type="button" class="retry" disabled>Loading the run…</button>
+          <span class="note" id="replay-note"></span>
+        </div>
+        <ol id="replay-body" class="replay-steps"></ol>
+        <div id="replay-final" hidden></div>
+      </section>
+
+      <footer>
+        <span>Capsule — the record of what an agent did with your money.</span>
+        <span>The chain checks on this page were made when it loaded.</span>
+      </footer>
+    </div>
+    <script type="module" src="/replay.js"></script>
+  </body>
+</html>

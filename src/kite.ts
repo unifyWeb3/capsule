@@ -48,8 +48,11 @@ export function chainMoneyParser(
       typeof amount === "number"
         ? amount.toFixed(chain.assetDecimals)
         : amount.trim().replace(/^\$/, "");
-    if (!/^\d+(\.\d+)?$/.test(text) || Number(text) <= 0) {
+    if (!/^\d+(\.\d+)?$/.test(text)) {
       throw new Error(`price must be a positive decimal, got ${amount}`);
+    }
+    if (BigInt(toBaseUnits(text, chain.assetDecimals)) <= 0n) {
+      throw new Error(`price must be above zero, got ${amount}`);
     }
     return parsePrice(text, chain);
   };

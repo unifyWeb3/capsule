@@ -53,13 +53,17 @@ export interface BuildReceiptsInput {
 export function buildReceipts(input: BuildReceiptsInput): Receipts {
   const { records } = input;
   const { purchases, refusals } = split(records);
+  // Notes annotate the log but are not attempts: they carry no money and
+  // take no receipt step. Everything else is.
+  const actionable = records.filter((record) => record.decision.kind !== "note");
 
   // The running total. A refused purchase does not move it, which is the whole
   // point of the column.
   let running = 0n;
-  const steps: ReceiptStep[] = records.map((record, index) => {
+  const steps: ReceiptStep[] = actionable.map((record, index) => {
     const decision = record.decision;
     if (decision.kind === "note") {
+      // Unreachable — `actionable` excludes notes — kept as the type guard.
       throw new Error(`record ${index} is a note, which a run does not write`);
     }
     if (decision.kind === "purchase") {

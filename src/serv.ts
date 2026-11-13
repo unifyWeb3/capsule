@@ -36,19 +36,6 @@ export interface ServCallRecord {
   error: string | null;
 }
 
-export interface ServChoice {
-  /** What the model decided to do. */
-  action: "buy" | "stop" | "answer";
-  endpoint: string | null;
-  topic: string | null;
-  reason: string;
-}
-
-export interface ServResult {
-  choice: ServChoice;
-  record: ServCallRecord;
-}
-
 
 export class ServClient {
   private readonly apiKey: string;
@@ -124,10 +111,6 @@ Task: ${input.task}`;
     }
   }
 
-  /** Parses the model's JSON answer, tolerating a fenced block. */
-  private static parseChoice(content: string): ServChoice {
-    return parseChoice(content);
-  }
 }
 
 /** Parses the model's JSON answer, tolerating a fenced block. */

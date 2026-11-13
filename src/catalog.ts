@@ -80,9 +80,15 @@ const COINGECKO_IDS: Record<Topic, string> = {
   LINK: "chainlink",
 };
 
-/** A cached spot quote, so a rate limit cannot cost a buyer their money. */
-let spotCache: { topic: Topic; quote: SpotQuote; at: number } | null = null;
+/**
+ * Cached spot quotes, one slot per topic, so a rate limit cannot cost a
+ * buyer their money. Only live answers are cached for the full minute; a
+ * failure is cached for five seconds so a transient upstream blip does not
+ * stick for a minute, and one topic's cache never evicts another's.
+ */
+const spotCache = new Map<Topic, { quote: SpotQuote; at: number }>();
 const SPOT_TTL_MS = 60_000;
+const FAILURE_TTL_MS = 5_000;
 
 /** Live spot price, or null when the upstream is unreachable. */
 export interface SpotQuote {
@@ -95,22 +101,19 @@ export interface SpotQuote {
 
 export async function fetchSpot(topic: Topic): Promise<SpotQuote> {
   const asOf = new Date().toISOString();
-  if (
-    spotCache &&
-    spotCache.topic === topic &&
-    Date.now() - spotCache.at < SPOT_TTL_MS
-  ) {
-    return spotCache.quote;
+  const cached = spotCache.get(topic);
+  const ttl = cached?.quote.source === "live" ? SPOT_TTL_MS : FAILURE_TTL_MS;
+  if (cached && Date.now() - cached.at < ttl) {
+    return cached.quote;
   }
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${COINGECKO_IDS[topic]}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
     const response = await fetch(url, {
       signal: controller.signal,
       headers: { accept: "application/json" },
     });
-    clearTimeout(timer);
     if (!response.ok) throw new Error(`coingecko HTTP ${response.status}`);
     const body = (await response.json()) as Record<string, {
       usd?: number;
@@ -126,7 +129,7 @@ export async function fetchSpot(topic: Topic): Promise<SpotQuote> {
       asOf,
       source: "live",
     };
-    spotCache = { topic, quote, at: Date.now() };
+    spotCache.set(topic, { quote, at: Date.now() });
     return quote;
   } catch {
     const unavailable: SpotQuote = {
@@ -136,8 +139,10 @@ export async function fetchSpot(topic: Topic): Promise<SpotQuote> {
       asOf,
       source: "unavailable",
     };
-    spotCache = { topic, quote: unavailable, at: Date.now() };
+    spotCache.set(topic, { quote: unavailable, at: Date.now() });
     return unavailable;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -182,8 +187,10 @@ export function derivedSeries(topic: Topic, spotUsd: number | null, windowDays: 
     if (drawdown > maxDrawdown) maxDrawdown = drawdown;
   }
   const mean = sum / windowDays;
+  const returnsMean =
+    returns.reduce((acc, r) => acc + r, 0) / returns.length;
   const variance =
-    returns.reduce((acc, r) => acc + (r - returns.reduce((a, b) => a + b, 0) / returns.length) ** 2, 0) /
+    returns.reduce((acc, r) => acc + (r - returnsMean) ** 2, 0) /
     returns.length;
   const realizedVol = Math.sqrt(variance) * Math.sqrt(365) * 100;
   const totalReturn = ((price - spotUsd * 0.82) / (spotUsd * 0.82)) * 100;

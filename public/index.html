@@ -25,6 +25,7 @@
         <nav class="site-nav" aria-label="Site">
           <a href="/" aria-current="page">The record</a>
           <a href="/runs.html">The runs</a>
+          <a href="/replay.html">Replay</a>
           <a href="/verify.html">Verify a log</a>
           <a href="/docs/security-model.html">Security model</a>
           <a href="/docs/format.html">Log format</a>
@@ -38,6 +39,26 @@
           The refusals were decided by <strong>your Kite Passport session</strong>, not by the
           agent. The agent proposes; the limit disposes; the record keeps both.
         </p>
+
+        <div class="proof-strip" aria-label="What this record is anchored to">
+          <span class="proof-item"><i class="dot dot-settled"></i>Payments · <strong>chain-verified</strong> — Base, USDC</span>
+          <span class="proof-item"><i class="dot dot-refused"></i>Refusals · <strong>Kite's own codes</strong>, decided in the Passport backend</span>
+          <span class="proof-item"><i class="dot dot-verified"></i>The record · <strong>signed</strong> by the Kite-bound agent key</span>
+        </div>
+
+        <div class="cta-row">
+          <a class="cta cta-primary" href="/replay.html">Replay the run — 30 seconds</a>
+          <a class="cta cta-secondary" href="/verify.html">Verify your own log</a>
+        </div>
+
+        <div class="hero-stat">
+          <span class="hero-stat-number">20.4×</span>
+          <span class="hero-stat-label">
+            the price of the limit — <strong>$0.051</strong> of evidence the cap refused,
+            against a <strong>$0.0025</strong> budget.
+            <a href="#cost">Why the limit cost this →</a>
+          </span>
+        </div>
 
         <div id="session-slot"></div>
       </header>

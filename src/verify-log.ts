@@ -12,14 +12,77 @@
  * has its hash chain verified.
  */
 import { fetchText } from "./net.js";
-import { ChainReader, expectedBaseUnits, verifyStep, type ChainCheck, type ReceiptStep } from "./proof.js";
+import {
+  expectedBaseUnits,
+  readerFor,
+  verifyStep,
+  type ChainCheck,
+  type ReceiptStep,
+} from "./proof.js";
 import { chainByName, type SettlementChain } from "./chains.js";
-import { fromBaseUnits, toBaseUnits } from "./units.js";
+import { addDollars } from "./units.js";
 import {
   normaliseDecision,
   normaliseSession,
   type CanonicalDecision,
 } from "./normalize.js";
+
+/**
+ * Resolves a chain the way the step needs it, or null when this verifier
+ * does not read it. A foreign log naming an unsupported chain is not an
+ * error: its payments report `unavailable`, and everything the log itself
+ * can prove is still checked.
+ */
+function resolveChain(name: string | undefined | null): SettlementChain | null {
+  if (!name) return null;
+  try {
+    return chainByName(name);
+  } catch {
+    return null;
+  }
+}
+
+/** A chain check for a step whose chain this verifier cannot read. */
+function unsupportedChainCheck(decision: CanonicalDecision): ChainCheck {
+  let merchant: string | null = null;
+  try {
+    merchant = decision.url ? new URL(decision.url).host : null;
+  } catch {
+    merchant = null;
+  }
+  return {
+    tx_hash: decision.tx_hash ?? "",
+    outcome: "unavailable",
+    found: false,
+    block_number: null,
+    confirmations: null,
+    merchant,
+    recipient: null,
+    sender: null,
+    transfers: [],
+    note: `the chain "${decision.chain}" is not one this verifier reads, so the payment could not be checked`,
+  };
+}
+
+/** Maps over items with bounded parallelism, preserving order. */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  work: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= items.length) return;
+      results[index] = await work(items[index]!);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
 
 export interface PublishedDecision {
   kind?: string;
@@ -132,10 +195,17 @@ async function verifyLogChain(records: PublishedRecord[]): Promise<{
   let prev = `0x${"0".repeat(64)}`;
   for (let index = 0; index < records.length; index += 1) {
     const record = records[index]!;
+    const seq = typeof record.seq === "number" ? record.seq : index;
+    if (typeof record.seq === "number" && record.seq !== index) {
+      return {
+        ok: false,
+        detail: `record ${index} carries seq ${record.seq}, which is not its position`,
+      };
+    }
     const session = record.session;
     const payload = session
-      ? { seq: index, at: record.at, decision: record.decision, prev, session }
-      : { seq: index, at: record.at, decision: record.decision, prev };
+      ? { seq, at: record.at, decision: record.decision, prev, session }
+      : { seq, at: record.at, decision: record.decision, prev };
     const hash = keccak256(toHex(JSON.stringify(payload)));
     if (record.prev !== prev) {
       return { ok: false, detail: `record ${index} does not link to the record before it` };
@@ -154,11 +224,19 @@ function parseRecords(body: string): PublishedRecord[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
+      let parsed: unknown;
       try {
-        return JSON.parse(line) as PublishedRecord;
+        parsed = JSON.parse(line);
       } catch {
         throw new Error("the log is not one JSON object per line");
       }
+      // A line that parses to null, an array or a string is not a record:
+      // fail here with the message the reader can act on, not a TypeError
+      // from deep in the verifier.
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new Error("the log is not one JSON object per line");
+      }
+      return parsed as PublishedRecord;
     });
 }
 
@@ -186,7 +264,17 @@ export async function verifyPublishedLog(
     traceNumber += 1;
     trace.push({ n: traceNumber, label, detail, state });
   };
-  const firstChain = chainByName(records.find((r) => r.decision?.chain)?.decision?.chain);
+  // The chain the answer names. The log may name several, or none we
+  // support; the summary picks the first chain we can actually read, and
+  // the steps below say which steps were checked and which could not be.
+  const normalised: CanonicalDecision[] = records.map((record) =>
+    normaliseDecision(record as Record<string, unknown>),
+  );
+  const firstChain =
+    normalised
+      .map((decision) => resolveChain(decision.chain))
+      .find((chain): chain is SettlementChain => chain !== null) ??
+    chainByName(undefined);
   step("fetched the log", `${fetchedFrom} — ${body.length} bytes`);
   step("parsed the records", `${records.length} decisions read`, "info");
 
@@ -232,12 +320,12 @@ export async function verifyPublishedLog(
   );
 
   const steps: PublishedProof["steps"] = [];
-  const checks: ChainCheck[] = [];
-  const readers = new Map<string, ChainReader>();
+  const pending: Array<{
+    index: number;
+    decision: CanonicalDecision;
+    chain: SettlementChain | null;
+  }> = [];
 
-  const normalised: CanonicalDecision[] = records.map((record) =>
-    normaliseDecision(record as Record<string, unknown>),
-  );
   const foreignShape = records.every(
     (record) => !record.decision && !record.hash,
   );
@@ -251,7 +339,7 @@ export async function verifyPublishedLog(
 
   for (let index = 0; index < records.length; index += 1) {
     const decision = normalised[index]!;
-    const isPurchase = decision.kind === "purchase" && Boolean(decision.tx_hash);
+    const isPurchase = decision.kind === "purchase";
     steps.push({
       n: index,
       endpoint: decision.service ?? "(unnamed)",
@@ -261,42 +349,54 @@ export async function verifyPublishedLog(
       error_code: decision.error_code ?? null,
       tx_hash: decision.tx_hash ?? null,
     });
-    if (!isPurchase || !decision.tx_hash) continue;
+    if (!isPurchase) continue;
+    pending.push({ index, decision, chain: resolveChain(decision.chain) });
+  }
 
-    const chain: SettlementChain = chainByName(decision.chain ?? undefined);
-    let reader = readers.get(chain.id);
-    if (!reader) {
-      reader = new ChainReader(chain);
-      readers.set(chain.id, reader);
-    }
-    const receiptStep: ReceiptStep = {
-      n: index,
-      url: decision.url ?? "",
-      endpoint: decision.service ?? "",
-      price_usd: decision.price_usd ?? "0",
-      outcome: "paid",
-      http_status: null,
-      error_code: null,
-      error_message: null,
-      tx_hash: decision.tx_hash,
-      session_id: session.id,
-      spent_total_after: null,
-      paid_at: records[index]!.at ?? null,
-      fact: decision.fact ?? null,
-      reason: decision.reason ?? null,
-    };
-    const check = await verifyStep(
-      receiptStep,
-      chain,
-      expectedBaseUnits(decision.price_usd ?? "0", chain),
-      null,
-      reader,
-    );
-    checks.push(check);
+  // The chain reads are independent, so they are made in parallel with a
+  // bound. A step whose chain this verifier cannot read reports
+  // `unavailable` with the reason — not an error, and not a reason to
+  // stop the rest.
+  const checks: ChainCheck[] = await mapWithConcurrency(
+    pending,
+    4,
+    async ({ index, decision, chain }) => {
+      if (!chain) return unsupportedChainCheck(decision);
+      const receiptStep: ReceiptStep = {
+        n: index,
+        url: decision.url ?? "",
+        endpoint: decision.service ?? "",
+        price_usd: decision.price_usd ?? "0",
+        outcome: "paid",
+        http_status: null,
+        error_code: null,
+        error_message: null,
+        tx_hash: decision.tx_hash,
+        session_id: session.id,
+        spent_total_after: null,
+        paid_at: records[index]!.at ?? null,
+        fact: decision.fact ?? null,
+        reason: decision.reason ?? null,
+      };
+      return verifyStep(
+        receiptStep,
+        chain,
+        // A price that is not recorded is checked as "any amount"; coercing
+        // it to $0 would invent a failure (or a zero-value confirmation).
+        decision.price_usd ? expectedBaseUnits(decision.price_usd, chain) : null,
+        null,
+        readerFor(chain),
+      );
+    },
+  );
+  for (let position = 0; position < pending.length; position += 1) {
+    const item = pending[position]!;
+    const check = checks[position]!;
+    const chainName = item.chain?.network ?? item.decision.chain ?? "unknown chain";
     step(
-      `read the payment for ${decision.service ?? "(unnamed)"} from ${chain.network}`,
+      `read the payment for ${item.decision.service ?? "(unnamed)"} from ${chainName}`,
       check.outcome === "confirmed"
-        ? `a transfer of ${decision.price_usd} was confirmed at block ${
+        ? `a transfer of ${item.decision.price_usd} was confirmed at block ${
             check.block_number ?? "?"
           }, ${check.confirmations ?? 0} confirmations, to ${check.recipient ?? "?"}`
         : check.note,
@@ -310,36 +410,34 @@ export async function verifyPublishedLog(
 
   const purchases = steps.filter((step) => step.outcome === "paid");
   const refusals = steps.filter((step) => step.outcome === "refused");
-  // The decimals come from the chain the record settled on. Base USDC and
-  // Kite USDC.e are both six decimals.
-  const decimals = chainByName(
-    normalised.find((decision) => decision.chain)?.chain ?? undefined,
-  ).assetDecimals;
+  // Prices are dollar strings; add them exactly, without routing through any
+  // one chain's decimals — a log may carry records from several chains.
   const spent = purchases.reduce(
-    (total, step) => total + BigInt(toBaseUnits(step.price_usd, decimals)),
-    0n,
+    (total, step) => addDollars(total, step.price_usd),
+    "0",
   );
   const refused = refusals.reduce(
-    (total, step) => total + BigInt(toBaseUnits(step.price_usd, decimals)),
-    0n,
+    (total, step) => addDollars(total, step.price_usd),
+    "0",
   );
-  const budget = options.budgetUsd ?? Number(session.max_total_amount ?? 0);
+  const budgetRaw = options.budgetUsd ?? Number(session.max_total_amount ?? 0);
+  const budget = Number.isFinite(budgetRaw) && budgetRaw > 0 ? budgetRaw : null;
   const allConfirmed = checks.length > 0 && checks.every((check) => check.outcome === "confirmed");
 
   step(
     "read the refusals",
     refusals.length
-      ? `${refusals.length} refused, priced at $${fromBaseUnits(refused, decimals)} from the log the owner published`
+      ? `${refusals.length} refused, priced at $${refused} from the log the owner published`
       : "none",
     refusals.length ? "warn" : "info",
   );
   step(
     "priced the limit",
-    budget > 0
-      ? `$${fromBaseUnits(refused, decimals)} of evidence refused against a $${budget} budget — ${(
-          Number(refused) / Number(toBaseUnits(String(budget), decimals))
+    budget !== null
+      ? `$${refused} of evidence refused against a $${budget} budget — ${(
+          Number(refused) / budget
         ).toFixed(1)}x the whole budget`
-      : `$${fromBaseUnits(refused, decimals)} of evidence refused, against no budget the log records`,
+      : `$${refused} of evidence refused, against no budget the log records`,
     "warn",
   );
 
@@ -365,15 +463,11 @@ export async function verifyPublishedLog(
     totals: {
       purchases: purchases.length,
       refusals: refusals.length,
-      spent_usd: fromBaseUnits(spent, decimals),
-      refused_usd: fromBaseUnits(refused, decimals),
+      spent_usd: spent,
+      refused_usd: refused,
       budget_multiplier:
-        budget > 0
-          ? Number(
-              (
-                (Number(refused) / Number(toBaseUnits(String(budget), decimals))).toFixed(2)
-              ),
-            )
+        budget !== null
+          ? Number((Number(refused) / budget).toFixed(2))
           : null,
     },
     steps,

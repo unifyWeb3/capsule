@@ -24,10 +24,10 @@ the limit is a measurement and not an assertion.
 | **What is not** | The refusals — they leave no transaction. See [the asymmetry](#the-asymmetry) |
 
 <!-- Judge-reachable surfaces -->
-| | | | | |
-| --- | --- | --- | --- | --- |
-| **Live app** | **Proof endpoint** | **Repository** | **Agent identity** | **Settlement** |
-| `capsule-phi-blond.vercel.app` | `/proof.json` | `github.com/unifyWeb3/capsule` | `did:kite:ind-akoladefatoki108:capsule-agent` | Base mainnet, USDC |
+| | | | | | |
+| --- | --- | --- | --- | --- | --- |
+| **Live app** | **Proof endpoint** | **Repository** | **Agent identity** | **Settlement** | **MCP** |
+| `capsule-phi-blond.vercel.app` | `/proof.json` | `github.com/unifyWeb3/capsule` | `did:kite:ind-akoladefatoki108:capsule-agent` | Base mainnet, USDC | `npm run mcp` |
 
 [![gates](https://github.com/unifyWeb3/capsule/actions/workflows/gates.yml/badge.svg)](https://github.com/unifyWeb3/capsule/actions/workflows/gates.yml)
 
@@ -144,6 +144,42 @@ curl "https://capsule-phi-blond.vercel.app/verify?log=https://example.com/decisi
 # or read it in a browser — this one shows the check happening, step by step
 open "https://capsule-phi-blond.vercel.app/verify?log=https://example.com/decision-log.jsonl"
 ```
+
+Or from an agent, as a tool — no wallet, no account, a URL is the credential:
+
+```bash
+npm run mcp        # stdio MCP server: verify_record(log_url), get_proof()
+```
+
+```json
+{
+  "mcpServers": {
+    "capsule-verifier": {
+      "command": "node",
+      "args": ["--import", "tsx", "/path/to/capsule/mcp/server.ts"]
+    }
+  }
+}
+```
+
+Two tools: `verify_record(log_url, budget_usd?)` — the full published proof, anybody's
+log; and `get_proof()` — this deployment's own recorded run, re-read from the chain at
+call time. No custody of anything, on purpose.
+
+And at machine scale the verifier is itself an x402 merchant — $0.001 per verification,
+paid in USDC from the caller's own Kite Passport session, no Capsule account required:
+
+```bash
+curl -X POST "https://capsule-phi-blond.vercel.app/api/verify" \
+  -H "content-type: application/json" \
+  -d '{"log_url": "https://example.com/decision-log.jsonl"}'
+# → 402 with the x402 challenge (price, network, payTo) until a payment is attached
+```
+
+A non-2xx answer (a log we refuse to fetch, a log that cannot be read) cancels settlement,
+so a buyer never pays for a log that cannot be verified — only for one that can. As with
+Scout, the path is implemented and untested in production: nothing has been paid for a
+verification yet.
 
 Three checks, and they are independent of each other:
 
@@ -333,7 +369,7 @@ npm run readme              # regenerates the tables above
 | **The payer** | The operator who sets the cap on an agent that spends on their behalf. Not the end user: they carry the chargeback risk, and they sign the inference bill the cap sits beside |
 | **The number** | A per-agent monthly fee, with the platform fee a share of the spend it caps |
 | **The sentence** | **Spend control that tells you what your control is costing you.** Today nobody can answer that question. The cap either bites and you never learn what it cost, or it does not bite and you are paying for a limit you never needed |
-| **How to charge** | The path is built: this repository is an x402 merchant (`/v1/*`) that settles USDC on Base through the Pieverse facilitator, and the settlement code ran against real payments. It has never *received* money, because our host is not on the Passport's allowlist — one message to Kite puts it there |
+| **How to charge** | Two paid surfaces are built: Scout (`/v1/*`, market data) and the verifier (`/api/verify`, $0.001 per record check), both x402 on Base through the Pieverse facilitator. The settlement code ran against real payments for Scout. Neither has *received* money — our host is not on the Passport's allowlist. One message to Kite puts it there |
 
 **This is a hypothesis, and not a business.** Spend-control software is a real, budgeted
 market — corporate card controls and API spend caps are things companies already pay for.

@@ -42,7 +42,9 @@ left alone.
 | 7 | `src/store.ts` — `RecordStore`, file | Postgres | §7.4 | **DESIGNED, NOT BUILT** |
 | 8 | `src/host.ts` — `POST /api/records`, `GET /r/:slug` | §7.5 | **DESIGNED, NOT BUILT** |
 | 9 | The Postgres schema and `scripts/migrate.ts` | §5 | **DESIGNED, NOT BUILT** — it has not been applied to a live database |
-| 10 | The token-bucket rate limit on `/verify` | §7.5 | **DESIGNED, NOT BUILT** |
+| 10 | The token-bucket rate limit on `/verify` | §7.5 | **BUILT** — `src/rate-limit.ts`; 30/min/IP, 6/min/log URL, 20 in flight, 429 + `Retry-After` |
+| 11 | `POST /api/verify` — the verifier as an x402 merchant, $0.001 | §4.5 | **BUILT** — `src/app.ts` `paidRoutes` + handler; 402 challenge verified; settlement untested in production (never paid yet) |
+| 12 | `mcp/server.ts` — the verifier as an MCP tool (`verify_record`, `get_proof`) | §4 | **BUILT** — stdio MCP, zero custody; integration-tested against the live record |
 
 **Why items 6–10 are not built.** They are the hosted-record tier, and the hosted
 tier has no customer. `docs/BRIEF.md` records the payment evidence as "level 5 — our

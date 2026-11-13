@@ -177,11 +177,39 @@ export interface Receipts {
 }
 
 export async function readReceipts(file = RECEIPTS_PATH): Promise<Receipts | null> {
+  let raw: string;
   try {
-    return JSON.parse(await readFile(file, "utf8")) as Receipts;
-  } catch {
-    return null;
+    raw = await readFile(file, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
   }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(
+      `the receipts file ${file} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  // The minimum shape every consumer needs; a malformed artifact must fail
+  // loudly here, not as a TypeError deep inside a handler.
+  const candidate = parsed as Partial<Receipts> | null;
+  if (
+    !candidate ||
+    typeof candidate !== "object" ||
+    !Array.isArray(candidate.steps) ||
+    typeof candidate.chain !== "object" ||
+    candidate.chain === null ||
+    typeof (candidate.chain as Receipts["chain"]).network !== "string" ||
+    typeof candidate.totals !== "object" ||
+    candidate.totals === null
+  ) {
+    throw new Error(
+      `the receipts file ${file} does not have the receipts shape (steps/chain/totals)`,
+    );
+  }
+  return candidate as Receipts;
 }
 
 /** The chain a record was settled on, read from the record itself. */
@@ -453,7 +481,10 @@ export async function verifyStep(
       return base;
     }
     base.outcome = "confirmed";
-    base.note = "a transfer of the expected amount was paid by the session's wallet";
+    base.note =
+      expectedSender === null
+        ? "a transfer of the expected amount exists on chain (the sender is not asserted for this record)"
+        : "a transfer of the expected amount was paid by the session's wallet";
     return base;
   } catch (error) {
     base.outcome = "unavailable";

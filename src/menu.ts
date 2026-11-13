@@ -5,12 +5,10 @@
  * session is funded for. The prices come from the catalog, not from us, so the
  * model is reasoning over real costs.
  *
- * The filtering is the product's thesis, not a convenience. The code decides
- * what the agent can afford in total and hands the model only that shortlist,
- * so the model can never plan past the budget. The per-transaction ceiling is
- * deliberately *not* applied here: that limit belongs to the Passport, and the
- * agent is meant to be able to try for the better answer and be refused by the
- * thing that actually enforces it.
+ * The shortlist below is a *relevance* shortlist only — the endpoints that
+ * could answer a fact, cheapest first. It is deliberately NOT a budget
+ * filter: deciding what the agent may afford is the Passport's job, and the
+ * per-transaction ceiling in particular is deliberately not applied here.
  */
 import { readFile } from "node:fs/promises";
 import { MENU_PATH } from "./paths.js";
@@ -80,17 +78,6 @@ export function relevantTo(menu: Menu, fact: string): MenuEntry[] {
 }
 
 /**
- * The endpoints the remaining budget puts out of reach.
- *
- * This is what the limit costs, in the catalog's own prices.
- */
-export function outOfReach(menu: Menu, remainingUsd: number): MenuEntry[] {
-  return menu.endpoints
-    .filter((entry) => Number(entry.price_usd) > remainingUsd + 1e-9)
-    .sort((a, b) => Number(a.price_usd) - Number(b.price_usd));
-}
-
-/**
  * A loose match between a fact the answer needs and the fields an endpoint
  * returns, so the record can say which catalog endpoint would have covered it.
  */
@@ -107,10 +94,6 @@ export function matchScore(entry: MenuEntry, fact: string): number {
   if (!words.length) return 0;
   const haystack = `${entry.summary ?? ""} ${(entry.returns ?? []).join(" ")} ${entry.path ?? ""} ${(entry.tags ?? []).join(" ")}`.toLowerCase();
   return words.filter((word) => haystack.includes(word)).length;
-}
-
-export function coversFact(entry: MenuEntry, fact: string): boolean {
-  return matchScore(entry, fact) >= 1;
 }
 
 /**
@@ -153,23 +136,3 @@ const STOP_WORDS = new Set([
   "facts",
   "covered",
 ]);
-
-export interface CounterfactualFact {
-  fact: string;
-  covered: boolean;
-  /** The cheapest endpoint in the catalog that could have covered it. */
-  cheapest: { id: string; service: string; path: string; price_usd: string; url: string } | null;
-  /** What stopped it. */
-  blocked_by: "budget" | "session cap" | null;
-}
-
-export interface Counterfactual {
-  /** The facts the answer needed. */
-  facts: CounterfactualFact[];
-  /** What the remaining budget could not reach. */
-  unreachable: Array<{ id: string; service: string; path: string; price_usd: string }>;
-  /** The cheapest endpoint in the whole catalog, and what it costs against the budget. */
-  cheapest_unreachable: { id: string; service: string; path: string; price_usd: string } | null;
-  /** How many times the remaining budget was smaller than the evidence it wanted. */
-  budget_multiplier: number | null;
-}

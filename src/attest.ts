@@ -47,9 +47,25 @@ export function attestationMessage(input: {
   records: number;
   chain: string;
 }): string {
+  return buildAttestationMessage(input, "did:");
+}
+
+/**
+ * The message format, parameterised on the DID prefix so the verifier can
+ * accept both the legacy double-prefixed form (`did:did:…`, which the
+ * published receipts were signed with) and the current single-prefix form.
+ * New signatures always use the single prefix.
+ */
+function buildAttestationMessage(
+  input: { head: string; did: string; records: number; chain: string },
+  didPrefix: "did:" | "did:did:",
+): string {
+  // A DID may arrive already carrying its `did:` scheme prefix; the message
+  // adds exactly one, either way.
+  const bare = input.did.replace(/^(did:)+/, "");
   return [
     "capsule.decision-log.v1",
-    `did:${input.did}`,
+    `${didPrefix}${bare}`,
     `head:${input.head}`,
     `records:${input.records}`,
     `chain:${input.chain}`,
@@ -145,45 +161,75 @@ export async function signLog(input: {
  * The key is the compressed secp256k1 public key the Passport publishes; the
  * address it derives must be the address the Passport publishes for it, and must
  * match the address that signed.
+ *
+ * `expected`, when given, binds the attestation to the specific artifact the
+ * caller holds: the message's records/chain must match. When omitted (older
+ * callers), those fields are read out of the signed message — which proves
+ * only that the message is self-consistent, not that it covers this artifact.
  */
 export async function verifyAttestation(
   attestation: Attestation,
   published: AgentKey[],
+  expected?: { records?: number; chain?: string },
 ): Promise<{ ok: boolean; reason: string; recovered: string | null }> {
   if (!published.length) {
     return { ok: false, reason: "the Passport publishes no key for this DID", recovered: null };
   }
   const active = published.filter((key) => key.active);
   const candidates = active.length ? active : published;
-  const expected = attestationMessage({
-    head: attestation.head,
-    did: attestation.did,
-    records: Number(attestation.message.match(/records:(\d+)/)?.[1] ?? "0"),
-    chain: attestation.message.match(/chain:(\S+)/)?.[1] ?? "",
-  });
-  if (expected !== attestation.message) {
+
+  // The message must be one of the known forms for exactly these fields.
+  const fieldMatch = (prefix: "did:" | "did:did:"): boolean => {
+    const recordsInMessage = Number(attestation.message.match(/records:(\d+)/)?.[1] ?? "0");
+    const chainInMessage = attestation.message.match(/chain:(\S+)/)?.[1] ?? "";
+    if (expected?.records !== undefined && recordsInMessage !== expected.records) return false;
+    if (expected?.chain !== undefined && chainInMessage !== expected.chain) return false;
+    const expectedMessage = buildAttestationMessage(
+      {
+        head: attestation.head,
+        did: attestation.did,
+        records: recordsInMessage,
+        chain: chainInMessage,
+      },
+      prefix,
+    );
+    return expectedMessage === attestation.message;
+  };
+  if (!fieldMatch("did:") && !fieldMatch("did:did:")) {
     return { ok: false, reason: "the attestation message does not match its own fields", recovered: null };
   }
+
+  // One recovery, shared by every candidate key.
+  let recovered: string | null = null;
+  try {
+    recovered = await recoverMessageAddress({
+      message: attestation.message,
+      signature: attestation.signature,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      reason: `the signature did not recover: ${error instanceof Error ? error.message : String(error)}`,
+      recovered: null,
+    };
+  }
+  if (!recovered) {
+    return { ok: false, reason: "the signature did not recover", recovered: null };
+  }
+  if (recovered.toLowerCase() !== attestation.address.toLowerCase()) {
+    return {
+      ok: false,
+      reason: "the signature recovered to a different address than the attestation names",
+      recovered,
+    };
+  }
   for (const key of candidates) {
-    let recovered: string | null = null;
-    try {
-      // secp256k1 recovery yields the one address that produced this
-      // signature. If it equals the address the Passport publishes for this
-      // key, then that key signed it.
-      recovered = await recoverMessageAddress({
-        message: attestation.message,
-        signature: attestation.signature,
-      });
-    } catch (error) {
-      return {
-        ok: false,
-        reason: `the signature did not recover: ${error instanceof Error ? error.message : String(error)}`,
-        recovered: null,
-      };
+    // secp256k1 recovery yields the one address that produced this
+    // signature. If it equals the address the Passport publishes for this
+    // key, then that key signed it.
+    if (key.address && recovered.toLowerCase() !== key.address.toLowerCase()) {
+      continue;
     }
-    if (!recovered) continue;
-    if (recovered.toLowerCase() !== attestation.address.toLowerCase()) continue;
-    if (key.address && recovered.toLowerCase() !== key.address.toLowerCase()) continue;
     return { ok: true, reason: "the signature recovers to the address the Passport publishes", recovered };
   }
   return {

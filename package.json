@@ -18,6 +18,7 @@
     "menu": "npx tsx scripts/build-menu.ts",
     "verify": "node --env-file-if-exists=.env --import tsx scripts/verify.ts",
     "audit": "node scripts/audit-pages.mjs",
+    "mcp": "node --env-file-if-exists=.env --import tsx mcp/server.ts",
     "measure": "node scripts/measure-endpoints.mjs",
     "markup": "node scripts/check-markup.mjs",
     "receipts": "node --env-file-if-exists=.env --import tsx scripts/rebuild-receipts.ts",
@@ -26,6 +27,7 @@
     "judge": "node --env-file-if-exists=.env --import tsx scripts/judge.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@x402/core": "^2.25.0",
     "@x402/evm": "^2.25.0",
     "@x402/express": "^2.25.0",

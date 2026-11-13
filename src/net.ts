@@ -38,39 +38,144 @@ const BLOCKED_HOSTNAMES = new Set([
 ]);
 
 /**
+ * Expands an IPv6 address into its eight 16-bit groups, or returns null when
+ * the string is not a valid IPv6 address. Handles `::` compression and an
+ * embedded dotted-quad tail (`::ffff:127.0.0.1`).
+ */
+function parseIPv6Groups(address: string): number[] | null {
+  let input = address.trim().toLowerCase();
+  if (input.length === 0 || input.length > 45) return null;
+
+  // An embedded dotted quad (`::ffff:127.0.0.1`): expand it to two hextets.
+  const lastColon = input.lastIndexOf(":");
+  const maybeV4 = input.slice(lastColon + 1);
+  if (maybeV4.includes(".")) {
+    if (isIP(maybeV4) !== 4) return null;
+    const octets = maybeV4.split(".").map((part) => Number(part));
+    const hi = ((octets[0]! << 8) | octets[1]!) & 0xffff;
+    const lo = ((octets[2]! << 8) | octets[3]!) & 0xffff;
+    input = `${input.slice(0, lastColon)}:${hi.toString(16)}:${lo.toString(16)}`;
+  }
+
+  if (!/^[0-9a-f:]+$/.test(input)) return null;
+
+  const halves = input.split("::");
+  if (halves.length > 2) return null;
+
+  const parseGroups = (text: string): number[] =>
+    text.split(":").map((group) => Number.parseInt(group, 16));
+
+  let groups: number[];
+  if (halves.length === 2) {
+    const head = halves[0] ? parseGroups(halves[0]!) : [];
+    const tail = halves[1] ? parseGroups(halves[1]!) : [];
+    const missing = 8 - head.length - tail.length;
+    if (missing < 1) return null;
+    groups = [...head, ...Array<number>(missing).fill(0), ...tail];
+  } else {
+    groups = parseGroups(input);
+    if (groups.length !== 8) return null;
+  }
+
+  if (groups.length !== 8) return null;
+  for (const group of groups) {
+    if (!Number.isInteger(group) || group < 0 || group > 0xffff) return null;
+  }
+  return groups;
+}
+
+/** True when a dotted-quad IPv4 address is public unicast. */
+function isPublicIPv4(address: string): boolean {
+  const parts = address.split(".").map(Number);
+  if (parts.length !== 4) return false;
+  if (parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const a = parts[0]!;
+  const b = parts[1]!;
+  if (a === 0 || a === 10 || a === 127) return false;
+  if (a === 169 && b === 254) return false; // link-local, and the metadata address
+  if (a === 172 && b >= 16 && b <= 31) return false; // private
+  if (a === 192 && b === 168) return false; // private
+  if (a === 100 && b >= 64 && b <= 127) return false; // carrier grade NAT
+  if (a === 192 && b === 0) return false; // IETF protocol assignments (192.0.0.0/24), incl. documentation 192.0.2.0/24
+  if (a === 192 && b === 88 && parts[2] === 99) return false; // deprecated 6to4 relay anycast
+  if (a === 198 && (b === 18 || b === 19)) return false; // benchmarking 198.18.0.0/15
+  if (a === 198 && b === 51 && parts[2] === 100) return false; // documentation range 198.51.100.0/24
+  if (a === 203 && b === 0 && parts[2] === 113) return false; // documentation range 203.0.113.0/24
+  if (a >= 224) return false; // multicast and reserved
+  return true;
+}
+
+/** True when the last 32 bits of an IPv6 address hold a public IPv4 address. */
+function embeddedIPv4IsPublic(groups: number[]): boolean {
+  const hi = groups[groups.length - 2]!;
+  const lo = groups[groups.length - 1]!;
+  return isPublicIPv4(
+    `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`,
+  );
+}
+
+/**
  * True when an address is a public unicast address we may connect to.
  *
  * Everything else is refused: loopback, private ranges, link-local, carrier
- * grade NAT, multicast, reserved, and the IPv6 equivalents. The cloud
- * metadata addresses are inside the link-local and private ranges, so they are
- * covered.
+ * grade NAT, multicast, reserved, documentation ranges, addresses that carry
+ * an IPv4 address inside them (IPv4-mapped, NAT64, 6to4, IPv4-compatible)
+ * unless the embedded address is itself public, and the IPv6 equivalents.
+ * The cloud metadata addresses are inside the link-local and private ranges,
+ * so they are covered.
  */
 export function isPublicAddress(address: string): boolean {
   const version = isIP(address);
+
   if (version === 4) {
-    const parts = address.split(".").map(Number);
-    const a = parts[0] ?? 0;
-    const b = parts[1] ?? 0;
-    if (a === 0 || a === 10 || a === 127) return false;
-    if (a === 169 && b === 254) return false; // link-local, and the metadata address
-    if (a === 172 && b >= 16 && b <= 31) return false; // private
-    if (a === 192 && b === 168) return false; // private
-    if (a === 100 && b >= 64 && b <= 127) return false; // carrier grade NAT
-    if (a >= 224) return false; // multicast and reserved
-    return true;
+    return isPublicIPv4(address);
   }
+
   if (version === 6) {
-    const lower = address.toLowerCase();
-    if (lower === "::1" || lower === "::") return false;
-    if (lower.startsWith("fe80")) return false; // link-local
-    if (lower.startsWith("fc") || lower.startsWith("fd")) return false; // unique local
-    if (lower.startsWith("ff")) return false; // multicast
-    if (lower.startsWith("::ffff:")) {
-      const mapped = lower.slice(7);
-      return isPublicAddress(mapped);
+    const groups = parseIPv6Groups(address);
+    if (!groups) return false;
+    const [g0, g1, g2, g3, g4, g5] = groups as [
+      number, number, number, number, number, number, number, number,
+    ];
+
+    // :: (unspecified) and ::1 (loopback)
+    if (groups.every((group) => group === 0)) return false;
+    if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0) {
+      return embeddedIPv4IsPublic(groups); // ::a.b.c.d — IPv4-compatible
     }
+
+    // IPv4-mapped ::ffff:a.b.c.d
+    if (
+      g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0xffff
+    ) {
+      return embeddedIPv4IsPublic(groups);
+    }
+
+    // NAT64 well-known prefix 64:ff9b::/96 and local-use 64:ff9b:1::/48
+    if (g0 === 0x0064 && g1 === 0xff9b) return false;
+    // 6to4 2002::/16 — embeds an IPv4 address in the second and third hextets
+    if (g0 === 0x2002) {
+      const hi = g1;
+      const lo = g2;
+      return isPublicIPv4(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+    }
+    // Teredo 2001:0000::/32 embeds the server address; refuse it outright
+    if (g0 === 0x2001 && g1 === 0x0000) return false;
+    // Discard-only 100::/64
+    if (g0 === 0x0100 && g1 === 0x0000 && g2 === 0 && g3 === 0) return false;
+    // Documentation 2001:db8::/32 (RFC 3849)
+    if (g0 === 0x2001 && g1 === 0x0db8) return false;
+    // Documentation 3fff::/20 (RFC 9602)
+    if ((g0 & 0xfff0) === 0x3ff0) return false;
+
+    if ((g0 & 0xffc0) === 0xfe80) return false; // link-local fe80::/10
+    if ((g0 & 0xfe00) === 0xfc00) return false; // unique local fc00::/7
+    if ((g0 & 0xff00) === 0xff00) return false; // multicast ff00::/8
     return true;
   }
+
   return false;
 }
 
@@ -107,15 +212,21 @@ export async function resolvePublic(rawUrl: string): Promise<ResolvedUrl> {
   if (url.username || url.password) {
     throw new UnsafeUrlError("a URL with credentials in it cannot be fetched");
   }
-  const host = url.hostname.toLowerCase().replace(/\.$/, "");
+  // The WHATWG parser keeps the brackets on an IPv6 literal; they are not part
+  // of the address. Trailing dots are dropped as well.
+  const host = url.hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
   if (BLOCKED_HOSTNAMES.has(host)) {
     throw new UnsafeUrlError("that host cannot be fetched");
   }
-  if (isIP(host)) {
+  const literalFamily = isIP(host);
+  if (literalFamily !== 0) {
     if (!isPublicAddress(host)) {
       throw new UnsafeUrlError("that address is not a public address");
     }
-    return { url, address: host, family: isIP(host) as 4 | 6 };
+    return { url, address: host, family: literalFamily as 4 | 6 };
   }
   const addresses = await dnsLookup(host, { all: true }).catch(
     () => [] as Array<{ address: string; family: number }>,

@@ -21,17 +21,10 @@ import CONTRAST_LOG_RECORDS from "../docs/runs/contrast/decision-log.json" with 
 import { UnsafeUrlError } from "./net.js";
 import { verifyPublishedLog } from "./verify-log.js";
 import { sellerRouter } from "./seller.js";
-import {
-  ChainReader,
-  chainFor,
-  expectedBaseUnits,
-  readReceipts,
-  readerFor,
-  verifyStep,
-  type Receipts,
-  type ReceiptStep,
-} from "./proof.js";
+import { readReceipts, type Receipts, type ReceiptStep } from "./proof.js";
+import { buildProof } from "./build-proof.js";
 import { PUBLIC_DIR, REPO_ROOT } from "./paths.js";
+import { allow } from "./rate-limit.js";
 
 function env(key: string, fallback = ""): string {
   return (process.env[key] ?? "").trim() || fallback;
@@ -41,6 +34,83 @@ export interface AppConfig {
   chain: SettlementChain;
   payTo: string;
   facilitatorUrl: string;
+}
+
+/**
+ * The receipts artifact, loaded without ever confusing "absent" with
+ * "broken": a missing file is the normal no-run state; an unreadable one is
+ * a 500 with `no-store`. Corruption must not answer "no run recorded".
+ */
+async function loadReceipts(): Promise<
+  { ok: true; receipts: Receipts | null } | { ok: false; message: string }
+> {
+  try {
+    return { ok: true, receipts: await readReceipts() };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+function receiptsUnavailable(response: Response, message: string) {
+  response.set("Cache-Control", "no-store");
+  return response.status(500).json({
+    error: "receipts_unreadable",
+    message,
+  });
+}
+
+/** Bounds the number of outbound verifications this instance runs at once. */
+const VERIFY_MAX_INFLIGHT = 20;
+let verifyInFlight = 0;
+
+function tooMany(response: Response, retryAfterSeconds: number) {
+  response.set("Cache-Control", "no-store");
+  response.set("Retry-After", String(retryAfterSeconds));
+  return response.status(429).json({
+    error: "rate_limited",
+    message:
+      "that is more verifications than this deployment allows in a minute; try again shortly",
+  });
+}
+
+/**
+ * The shared tail of both verification surfaces (the browser path and the
+ * paid one): one concurrency cap, one proof builder, one error shape. The
+ * free GET applies its own rate limits before calling this; the paid POST
+ * applies neither — the payment is the meter.
+ */
+async function respondWithVerification(
+  response: Response,
+  logUrl: string,
+  budget: number | undefined,
+) {
+  if (verifyInFlight >= VERIFY_MAX_INFLIGHT) {
+    return tooMany(response, 30);
+  }
+  verifyInFlight += 1;
+  try {
+    const proof = await verifyPublishedLog(logUrl, { budgetUsd: budget });
+    // A short-lived cache: the chain check for a mined transaction does not
+    // change, and this endpoint makes network calls. Thirty seconds, and no
+    // more — the same window the reader's own head is trusted for, and the
+    // answer carries the time it was made. `stale-while-revalidate` is
+    // deliberately absent, for the same reason.
+    response.set("Cache-Control", "public, max-age=30");
+    return response.json(proof);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const unsafe = error instanceof UnsafeUrlError;
+    response.set("Cache-Control", "no-store");
+    return response.status(unsafe ? 400 : 422).json({
+      error: unsafe ? "unsafe_url" : "cannot_verify",
+      message,
+    });
+  } finally {
+    verifyInFlight -= 1;
+  }
 }
 
 export function readConfig(): AppConfig {
@@ -63,10 +133,17 @@ export function readConfig(): AppConfig {
       `PAY_TO is not an EVM address: ${payTo}. It must be 0x followed by 40 hex characters.`,
     );
   }
+  if (/^0x0{40}$/i.test(payTo)) {
+    // Payments to the zero address are burned, unrecoverably. A placeholder
+    // that looks like an address is worse than a missing one.
+    throw new Error(
+      "PAY_TO is the all-zero address: payments sent there are burned. Set it to the address that should receive them.",
+    );
+  }
   return { chain, payTo, facilitatorUrl: env("FACILITATOR_URL", FACILITATOR_URL) };
 }
 
-/** One paid route per priced endpoint in the catalog. */
+/** One paid route per priced endpoint in the catalog, plus the verifier. */
 export function paidRoutes(config: AppConfig): RoutesConfig {
   const routes: RoutesConfig = {};
   for (const entry of CATALOG) {
@@ -84,87 +161,26 @@ export function paidRoutes(config: AppConfig): RoutesConfig {
       tags: ["market-data", "agent-paid"],
     };
   }
+  /**
+   * The verifier itself, as an x402 merchant. $0.001 per verification —
+   * cheaper than the data a serious agent buys, and the one call that tells
+   * it whether the agent it is about to hire is honest.
+   */
+  routes["POST /api/verify"] = {
+    accepts: {
+      scheme: "exact",
+      price: "$0.001",
+      network: config.chain.network,
+      payTo: config.payTo,
+      maxTimeoutSeconds: 60,
+    },
+    description:
+      "Verify any agent's spending record: hash chain checked, every payment re-read from the chain. $0.001 per verification.",
+    mimeType: "application/json",
+    serviceName: "Capsule Verifier",
+    tags: ["proof", "attestation", "agent-paid"],
+  };
   return routes;
-}
-
-/**
- * Checks every paid step of a record against the chain.
- *
- * One head read for the whole record, and one read per transaction, in
- * parallel. A transaction that cannot be read is "unavailable", which is not
- * the same as "did not match".
- */
-export async function checkRecord(
-  receipts: Receipts,
-): Promise<{
-  checks: Array<Awaited<ReturnType<typeof verifyStep>>>;
-  allVerified: boolean;
-}> {
-  const chain = chainFor(receipts.chain.network);
-  const reader = readerFor(chain);
-  const paid = receipts.steps.filter((step) => step.outcome === "paid");
-  // The head does not depend on the receipts, so it is asked for first and
-  // read while the receipts are on the way.
-  if (paid.length) reader.prewarm();
-  const checks = await Promise.all(
-    paid.map((step) =>
-      verifyStep(
-        step,
-        chain,
-        expectedBaseUnits(step.price_usd, chain),
-        receipts.payer_address,
-        reader,
-      ),
-    ),
-  );
-  return {
-    checks,
-    allVerified:
-      checks.length > 0 && checks.every((check) => check.outcome === "confirmed"),
-  };
-}
-
-/**
- * The proof payload for one run, with its payments re-read from the chain.
- *
- * One builder, so the owner's page, the run pages and the API cannot disagree
- * about what a run says.
- */
-export async function buildProof(
-  receipts: Receipts,
-  options: { run_id?: string; contrast?: Receipts | null } = {},
-): Promise<Record<string, unknown>> {
-  const { checks, allVerified } = await checkRecord(receipts);
-  return {
-    status: "verified",
-    run_id: options.run_id ?? "recorded",
-    // When the run happened. This does not move.
-    generated_at: receipts.generated_at,
-    // When the chain was read for this answer. This moves every time the
-    // answer is made, and it is the honest answer to "how old is this
-    // check?" — `generated_at` would say "as old as the run".
-    checked_at: new Date().toISOString(),
-    task: receipts.task,
-    claim: receipts.claim,
-    session: receipts.session,
-    agent: receipts.agent,
-    payer_address: receipts.payer_address,
-    chain: receipts.chain,
-    seller: receipts.seller,
-    log: receipts.log,
-    counterfactual: receipts.counterfactual,
-    attestation: receipts.attestation,
-    published_key: receipts.published_key,
-    serv: receipts.serv,
-    substitutions: receipts.substitutions,
-    contrast: options.contrast ?? null,
-    totals: receipts.totals,
-    steps: receipts.steps,
-    chain_checks: checks,
-    all_payments_verified_on_chain: allVerified,
-    note:
-      "chain_checks are read from the chain when this answer is made; they are not a copy of the receipts. checked_at says when.",
-  };
 }
 
 /** One line about a run, for the list. */
@@ -241,22 +257,22 @@ export function createApp(config: AppConfig = readConfig()) {
   app.get("/healthz", async (_request, response) => {
     // The deployment's own view of what it can read. If a file this app needs
     // is missing from the bundle, the health check says so instead of the page
-    // quietly rendering nothing.
+    // quietly rendering nothing. Not cached, and it names no secrets or
+    // absolute paths beyond the bundle inventory.
     const inventory: Record<string, string[]> = {};
-    for (const folder of ["docs", "public", "web"]) {
+    for (const folder of ["docs", "public"]) {
       try {
         inventory[folder] = await readdir(path.join(REPO_ROOT, folder));
       } catch {
         inventory[folder] = ["(not in the bundle)"];
       }
     }
+    response.set("Cache-Control", "no-store");
     response.json({
       ok: true,
       service: "Scout",
       network: config.chain.network,
       asset: config.chain.assetSymbol,
-      pay_to: config.payTo,
-      repo_root: REPO_ROOT,
       bundle: inventory,
     });
   });
@@ -268,9 +284,13 @@ export function createApp(config: AppConfig = readConfig()) {
   app.use(sellerRouter());
 
   // The proof surface. /proof.json re-verifies every recorded settlement
-  // against the chain before answering.
+  // against the chain before answering. Never cached: an answer that says
+  // "confirmed" must be an answer made now, on any host, not only on Vercel.
   app.get("/proof.json", async (_request: Request, response: Response) => {
-    const receipts = await readReceipts();
+    const load = await loadReceipts();
+    if (!load.ok) return receiptsUnavailable(response, load.message);
+    const receipts = load.receipts;
+    response.set("Cache-Control", "no-store");
     if (!receipts) {
       return response.status(200).json({
         status: "no_run_recorded",
@@ -337,7 +357,9 @@ export function createApp(config: AppConfig = readConfig()) {
    * address and a screen rather than a table in a README.
    */
   app.get("/runs.json", async (_request, response) => {
-    const receipts = await readReceipts();
+    const load = await loadReceipts();
+    if (!load.ok) return receiptsUnavailable(response, load.message);
+    const receipts = load.receipts;
     if (!receipts) {
       return response.status(200).json({ status: "no_run_recorded", runs: [] });
     }
@@ -358,8 +380,10 @@ export function createApp(config: AppConfig = readConfig()) {
 
   /** One run, as a full proof with its payments re-read from the chain. */
   app.get("/runs/:id.json", async (request: Request, response: Response) => {
+    const load = await loadReceipts();
+    if (!load.ok) return receiptsUnavailable(response, load.message);
+    const receipts = load.receipts;
     const id = String(request.params.id ?? "");
-    const receipts = await readReceipts();
     if (!receipts) {
       return response.status(404).json({ error: "no_run_recorded" });
     }
@@ -424,6 +448,41 @@ export function createApp(config: AppConfig = readConfig()) {
   });
 
   /**
+   * The verifier as an x402 merchant.
+   *
+   * No account, no API key: an agent with a funded Kite Passport session
+   * pays USDC per call, the price is the challenge's price (never a number
+   * this code picks at request time), and any answer short of 200 — a log
+   * we refuse to fetch, a log that cannot be read — has its settlement
+   * cancelled by the middleware, so the buyer keeps the money.
+   */
+  app.post("/api/verify", async (request: Request, response: Response) => {
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const logUrl = typeof body.log_url === "string" ? body.log_url.trim() : "";
+    if (!logUrl) {
+      response.set("Cache-Control", "no-store");
+      return response.status(400).json({
+        error: "missing_log_url",
+        message:
+          'POST a JSON body: {"log_url": "https://host/decision-log.jsonl", "budget_usd"?: 0.0025}',
+      });
+    }
+    let budget: number | undefined;
+    if (body.budget_usd !== undefined) {
+      const parsed = Number(body.budget_usd);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        response.set("Cache-Control", "no-store");
+        return response.status(400).json({
+          error: "invalid_request",
+          message: "`budget_usd` must be a finite, non-negative number of dollars",
+        });
+      }
+      budget = parsed;
+    }
+    return respondWithVerification(response, logUrl, budget);
+  });
+
+  /**
    * The third-party path.
    *
    * An agent owner publishes their decision log anywhere and hands this link
@@ -454,25 +513,33 @@ export function createApp(config: AppConfig = readConfig()) {
           "Give the URL of a decision log: /verify?log=https://example.com/decision-log.jsonl",
       });
     }
-    const budget = Number(request.query.budget ?? 0) || undefined;
-    try {
-      const proof = await verifyPublishedLog(logUrl, { budgetUsd: budget });
-      // A short-lived cache: the chain check for a mined transaction does not
-      // change, and this endpoint makes network calls. Thirty seconds, and no
-      // more — the same window the reader's own head is trusted for, and the
-      // answer carries the time it was made. `stale-while-revalidate` is
-      // deliberately absent, for the same reason.
-      response.set("Cache-Control", "public, max-age=30");
-      return response.json(proof);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const unsafe = error instanceof UnsafeUrlError;
-      response.set("Cache-Control", "no-store");
-      return response.status(unsafe ? 400 : 422).json({
-        error: unsafe ? "unsafe_url" : "cannot_verify",
-        message,
-      });
+
+    // Rate limits. This is the one unauthenticated endpoint that makes
+    // outbound requests and spends chain reads; it must not be an open
+    // relay. Per-IP and per-log-URL buckets, plus a global concurrency cap.
+    const ipKey = String(
+      request.ip ?? request.socket.remoteAddress ?? "unknown",
+    );
+    const ipLimit = allow(`ip:${ipKey}`, 30, 60_000);
+    if (!ipLimit.ok) return tooMany(response, ipLimit.retryAfterSeconds);
+    const logLimit = allow(`log:${logUrl.slice(0, 512)}`, 6, 60_000);
+    if (!logLimit.ok) return tooMany(response, logLimit.retryAfterSeconds);
+    const budgetParam = request.query.budget;
+    let budget: number | undefined;
+    if (budgetParam !== undefined) {
+      const parsed = Number(budgetParam);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        response.set("Cache-Control", "no-store");
+        return response.status(400).json({
+          error: "invalid_request",
+          message:
+            "`budget` must be a finite, non-negative number of dollars, e.g. ?budget=0.0025",
+        });
+      }
+      budget = parsed;
     }
+
+    return respondWithVerification(response, logUrl, budget);
   });
 
   app.use(express.static(PUBLIC_DIR));

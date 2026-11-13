@@ -6,11 +6,11 @@
  * path, so the two cannot disagree.
  */
 import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { DecisionLog, type LogRecord } from "./log.js";
 import { buildReceipts } from "./records.js";
 import { type LogSession, type Receipts } from "./proof.js";
-import { REPO_ROOT } from "./paths.js";
+import { RECEIPTS_PATH } from "./paths.js";
+
 import type { SettlementChain } from "./chains.js";
 import type { Menu } from "./menu.js";
 
@@ -89,7 +89,7 @@ export async function buildArtifact(
 
 /** The receipts an artifact replaces, so the fields the log lacks survive. */
 export async function readPreviousReceipts(
-  file = path.join(REPO_ROOT, "docs", "receipts.json"),
+  file = RECEIPTS_PATH,
 ): Promise<Receipts | null> {
   try {
     return JSON.parse(await readFile(file, "utf8")) as Receipts;

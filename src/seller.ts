@@ -30,6 +30,20 @@ function badTopic(response: Response) {
   });
 }
 
+/**
+ * The live price feed did not answer. A 503 keeps the x402 middleware from
+ * settling — the buyer keeps their money; a 200 full of nulls would charge
+ * them for nothing.
+ */
+function spotUnavailable(response: Response, topic: Topic) {
+  response.set("Cache-Control", "no-store");
+  return response.status(503).json({
+    error: "upstream_unavailable",
+    topic,
+    hint: "the live price feed did not answer; the payment was not settled",
+  });
+}
+
 export function sellerRouter(): Router {
   const router = Router();
 
@@ -50,6 +64,7 @@ export function sellerRouter(): Router {
     const topic = topicOf(request);
     if (!topic) return badTopic(response);
     const spot = await fetchSpot(topic);
+    if (spot.source === "unavailable") return spotUnavailable(response, topic);
     return response.json({
       topic,
       spot_usd: spot.spotUsd,
@@ -65,6 +80,7 @@ export function sellerRouter(): Router {
     const topic = topicOf(request);
     if (!topic) return badTopic(response);
     const spot = await fetchSpot(topic);
+    if (spot.source === "unavailable") return spotUnavailable(response, topic);
     const week = derivedSeries(topic, spot.spotUsd, 7);
     const month = derivedSeries(topic, spot.spotUsd, 30);
     return response.json({
@@ -87,6 +103,7 @@ export function sellerRouter(): Router {
     const topic = topicOf(request);
     if (!topic) return badTopic(response);
     const spot = await fetchSpot(topic);
+    if (spot.source === "unavailable") return spotUnavailable(response, topic);
     const series = derivedSeries(topic, spot.spotUsd, 90);
     return response.json({
       topic,
@@ -108,6 +125,7 @@ export function sellerRouter(): Router {
     const topic = topicOf(request);
     if (!topic) return badTopic(response);
     const spot = await fetchSpot(topic);
+    if (spot.source === "unavailable") return spotUnavailable(response, topic);
     return response.json({
       topic,
       spot_usd: spot.spotUsd,

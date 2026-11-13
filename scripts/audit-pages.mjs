@@ -59,10 +59,12 @@ const PAGES = [
     "/verify.html?log=" + encodeURIComponent(`${base}/examples/foreign-log.jsonl`),
   ],
   ["09-components", "/components.html"],
+  ["10-replay", "/replay.html"],
 ];
 
 /** The counts that say a page rendered something rather than nothing. */
 const COUNTS = {
+  replaySteps: ".replay-steps .replay-step",
   trace: ".trace li",
   record: ".record li",
   runcards: ".runcard",
@@ -80,6 +82,7 @@ const COUNTS = {
  */
 const MUST_CONTAIN = {
   "00-index": ["record", "callout"],
+  "10-replay": ["replaySteps"],
   "01-runs": ["runcards"],
   "02-run-recorded": ["record"],
   "03-run-contrast": ["record"],

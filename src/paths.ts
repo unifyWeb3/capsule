@@ -12,8 +12,9 @@
  * it knows nothing about proofs, logs or chains.
  */
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** The repository root. */
 export const REPO_ROOT = path.resolve(HERE, "..");

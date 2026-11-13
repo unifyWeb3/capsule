@@ -116,9 +116,14 @@ export function costProps(proof) {
 export function contrastProps(proof) {
   const other = proof.contrast;
   if (!other) return null;
-  const paidTheSame = (other.steps ?? []).find(
-    (step) => step.outcome === "paid" && step.price_usd === "0.05",
+  // The headline purchase in the other run: the most expensive thing it
+  // actually paid for. Hardcoding a price is how the punchline disappears.
+  const paidSteps = (other.steps ?? []).filter(
+    (step) => step.outcome === "paid" && step.tx_hash,
   );
+  const paidTheSame = paidSteps.sort(
+    (a, b) => Number(b.price_usd) - Number(a.price_usd),
+  )[0] ?? null;
   return {
     rows: [
       ["Per call", money(proof.session?.max_amount_per_tx), money(other.session?.max_amount_per_tx)],
