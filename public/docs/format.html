@@ -112,6 +112,9 @@ await log.append({
   id: "agent_session_...",
   max_amount_per_tx: "0.002",
   max_total_amount: "0.0025",
+  // The wallet that pays. Without it, a matching transfer could have been
+  // paid by anyone, and the payments are not counted as verified.
+  payer: "0x...",
 });</pre>
 
           <h3>Getting it checked</h3>
@@ -144,6 +147,7 @@ await log.append({
               <tr><td class="wrap">the endpoint</td><td class="wrap">service · name · provider · endpoint.name · target.provider · merchant</td></tr>
               <tr><td class="wrap">the refusal</td><td class="wrap">kind · action · status · outcome · error_code · error.code</td></tr>
               <tr><td class="wrap">the budget</td><td class="wrap">session · limits · policy, with max_amount_per_tx and max_total_amount</td></tr>
+              <tr><td class="wrap">the paying wallet</td><td class="wrap">payer · payer_address · wallet · wallet_address, in the session — or <code>&amp;payer=0x…</code> on the request</td></tr>
             </tbody>
           </table>
           <p>

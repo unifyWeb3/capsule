@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12T09:50:36.382Z",
+  "generated_at": "2026-11-12T09:50:22.742Z",
   "task": "Give me a cautious assessment of ETH: has it trended up this month, how volatile is it, and what are the main risks I should know about?",
   "claim": "Every purchase your agent made, every one it was refused, and the price of each - refusals decided by your Passport, not by the agent.",
   "session": {
@@ -9,11 +9,11 @@
     "max_total_amount": "0.1",
     "assets": null
   },
-  "payer_address": "0x1724508463D67b77882375931A46A351C0B69905",
   "agent": {
     "agent_id": "agent_01a1cbf8-be0f-70af-88a8-d82d7c85564c",
     "address": "0x5512caEe289ef639CD3181487F93920C5F544868"
   },
+  "payer_address": "0x1724508463D67b77882375931A46A351C0B69905",
   "chain": {
     "network": "eip155:8453",
     "chain_id": 8453,
@@ -24,6 +24,13 @@
   "seller": {
     "name": "Kite service catalog",
     "pay_to": "0xCfca130E445A5178d621aAd38E51D049855911c2"
+  },
+  "log": {
+    "algorithm": "keccak-256",
+    "path": "docs/runs/contrast/decision-log.jsonl",
+    "records": 3,
+    "head": "0xfe47d4ba5430787995c45b5800dcce27f3a1a813141f4ecbb00f3501fc38e211",
+    "verified": true
   },
   "attestation": {
     "domain": "capsule.decision-log.v1",
@@ -42,12 +49,11 @@
     "address": "0x5512caEe289ef639CD3181487F93920C5F544868",
     "active": true
   },
-  "log": {
-    "algorithm": "keccak-256",
-    "path": "docs/decision-log.jsonl",
-    "records": 3,
-    "head": "0x279e1752b94b75ef850d692c552a5fc3a3d6ddc732b8842562e293128dc384f9",
-    "verified": true
+  "serv": {
+    "model": null,
+    "calls": [],
+    "answer": null,
+    "note": "This run was recorded before the transport log was captured. The model's own reasoning for each attempt is in the signed decision log, on every step of the record."
   },
   "counterfactual": {
     "facts": [
@@ -89,7 +95,7 @@
   "substitutions": [],
   "steps": [
     {
-      "n": 1,
+      "n": 0,
       "url": "https://agent402.tools/api/crypto-price?coins=ETH&currency=usd",
       "endpoint": "Agent402 Tools /api/crypto-price",
       "price_usd": "0.001",
@@ -100,10 +106,12 @@
       "tx_hash": "0xde3407331e6db215239a171789eaf26490bf023a211c6eb1d820e5c5ea3a5586",
       "session_id": "agent_session_01a1cf1e-a8ff-7366-b287-1210fec6ad6e",
       "spent_total_after": "0.001",
-      "paid_at": "2026-11-12T09:50:11.232Z"
+      "paid_at": "2026-11-12T09:50:11.232Z",
+      "fact": "current ETH price and 24h change",
+      "reason": "Adds the current ETH price and 24h change for the fact_to_cover."
     },
     {
-      "n": 2,
+      "n": 1,
       "url": "https://x402.ottoai.services/base-ecosystem-news",
       "endpoint": "Otto AI /base-ecosystem-news",
       "price_usd": "0.001",
@@ -114,10 +122,12 @@
       "tx_hash": "0xb0cc177cdfe5db3eb666ed28e92e563868de69b5f9efe78f0d8823ba294bf94d",
       "session_id": "agent_session_01a1cf1e-a8ff-7366-b287-1210fec6ad6e",
       "spent_total_after": "0.002",
-      "paid_at": "2026-11-12T09:50:16.719Z"
+      "paid_at": "2026-11-12T09:50:16.721Z",
+      "fact": "sentiment and recent headlines",
+      "reason": "This adds partial coverage for the fact to cover: sentiment and recent headlines."
     },
     {
-      "n": 3,
+      "n": 2,
       "url": "https://google-trends.use.x402atlas.com/trend-over-time?geo=US&keyword=ETH&timeframe=past_12_months",
       "endpoint": "Google Trends (x402Atlas) /trend-over-time",
       "price_usd": "0.05",
@@ -128,7 +138,9 @@
       "tx_hash": "0xd769e94012206754dcf5c93921aa1fda87e14910d4246553828866851abfdaf5",
       "session_id": "agent_session_01a1cf1e-a8ff-7366-b287-1210fec6ad6e",
       "spent_total_after": "0.052",
-      "paid_at": "2026-11-12T09:50:22.739Z"
+      "paid_at": "2026-11-12T09:50:22.742Z",
+      "fact": "search interest and trend over the last month",
+      "reason": "Adds evidence for the fact to cover: search interest and trend over the last month."
     }
   ],
   "totals": {

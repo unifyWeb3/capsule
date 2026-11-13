@@ -32,6 +32,22 @@ async function main() {
   const kpass = new Kpass({ cwd: REPO_ROOT, sessionId: process.env.KPASS_SESSION_ID ?? null });
   const serv = new ServClient();
   const log = new DecisionLog();
+  // A run starts in a fresh log. Appending to an existing one would add this
+  // run to the published record, and the closing rewrite could fill in
+  // settlement references on the earlier run's records.
+  const existing = await log.read();
+  if (existing.length) {
+    console.error(
+      [
+        `${log.path} already holds ${existing.length} records from an earlier run.`,
+        "",
+        "A run must start in a fresh log. Either move that log out of the way, or",
+        "point this run at a new one:",
+        "  DECISION_LOG_PATH=docs/runs/<name>/decision-log.jsonl npm run demo",
+      ].join("\n"),
+    );
+    process.exit(1);
+  }
   const agent = new Agent(
     {
       task: TASK,

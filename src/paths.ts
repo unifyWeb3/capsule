@@ -8,12 +8,16 @@
  * is the kind of thing that turns into a cycle the day somebody moves a
  * file.
  *
- * This module imports nothing but `node:path`, so anything may use it, and
+ * This module imports nothing but `node:path` and `node:url`, so anything may use it, and
  * it knows nothing about proofs, logs or chains.
  */
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
+// fileURLToPath, not URL.pathname: on Windows the pathname is "/c:/...", and
+// path.resolve turns that into "c:\c:\...", so nothing under the repository
+// is found — every page is a 404 and every script misses its files.
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** The repository root. */
 export const REPO_ROOT = path.resolve(HERE, "..");

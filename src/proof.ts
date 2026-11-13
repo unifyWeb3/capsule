@@ -176,12 +176,22 @@ export interface Receipts {
   };
 }
 
+/**
+ * The committed receipts, or null when none have been recorded.
+ *
+ * Only a missing file means "no run recorded". Anything else — an unreadable
+ * file, invalid JSON — is an error, and it is thrown rather than reported as
+ * an empty record.
+ */
 export async function readReceipts(file = RECEIPTS_PATH): Promise<Receipts | null> {
+  let raw: string;
   try {
-    return JSON.parse(await readFile(file, "utf8")) as Receipts;
-  } catch {
-    return null;
+    raw = await readFile(file, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
   }
+  return JSON.parse(raw) as Receipts;
 }
 
 /** The chain a record was settled on, read from the record itself. */
@@ -394,6 +404,11 @@ export async function verifyStep(
     base.note = "no transaction hash recorded for this step";
     return base;
   }
+  if (!/^0x[0-9a-fA-F]{64}$/.test(step.tx_hash)) {
+    base.outcome = "mismatch";
+    base.note = "the recorded transaction hash is not a 32-byte hex hash";
+    return base;
+  }
 
   const chainReader = reader ?? new ChainReader(chain);
   try {
@@ -449,7 +464,7 @@ export async function verifyStep(
 
     if (matching.length === 0) {
       base.outcome = "mismatch";
-      base.note += "; the transfer amount does not match the receipt";
+      base.note = "the transfer amount does not match the receipt";
       return base;
     }
     base.outcome = "confirmed";

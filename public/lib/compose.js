@@ -168,8 +168,31 @@ export function substitutionProps(proof) {
  */
 export function verificationProps(proof) {
   const checks = proof.chain_checks ?? [];
+  const ok = proof.all_payments_verified_on_chain === true;
+  // A third party's record carries a trace and a three-way status, and the
+  // status is the verdict: "every payment confirmed" is not enough when the
+  // payer was not named or the hash chain is broken.
+  const thirdParty = Array.isArray(proof.trace);
+  const verdict = thirdParty
+    ? ({
+        verified: { kind: "verified", label: "verified — every payment confirmed, paid by the named wallet" },
+        partially_verified: {
+          kind: "neutral",
+          label: "partially verified — nothing contradicts it, but not everything could be checked",
+        },
+        unverified: {
+          kind: "fault",
+          label: "unverified — the log contradicts the chain or itself",
+        },
+      }[proof.status] ?? { kind: "neutral", label: String(proof.status ?? "unknown") })
+    : {
+        kind: ok ? "verified" : "fault",
+        label: ok ? "every payment confirmed on chain" : "a payment is unconfirmed",
+      };
   return {
-    ok: proof.all_payments_verified_on_chain === true,
+    ok,
+    verdict,
+    notes: Array.isArray(proof.notes) ? proof.notes : [],
     head: proof.chain?.symbol ?? "USDC",
     network: proof.chain?.network ?? "",
     // When the chain was read. The answer may be handed to a reader a little
@@ -200,6 +223,10 @@ export function verificationProps(proof) {
           did: proof.attestation.did,
           address: proof.attestation.address,
           signature: proof.attestation.signature,
+          // The signature is over one head. If the log was re-chained since,
+          // it does not cover this log, and the page must not say it does.
+          covers: proof.attestation_covers_log_head !== false,
+          signedHead: proof.attestation.head ?? "",
         }
       : null,
     payer: proof.payer_address ?? null,

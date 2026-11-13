@@ -6,10 +6,13 @@
  * approves, it sets the session as current and exits.
  */
 import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const exec = promisify(execFile);
-const REPO = new URL("..", import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: on Windows the pathname is "/c:/...", which
+// is not a path the file system accepts.
+const REPO = fileURLToPath(new URL("..", import.meta.url));
 
 const TASK = "Capsule demo: buy market data under a user-signed spending cap";
 

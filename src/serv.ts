@@ -22,6 +22,9 @@ Rules:
 - Never name an endpoint that is not on the menu; copy its id exactly.
 - In "reason", say which fact the purchase adds.`;
 
+/** How long one reasoning call may take before it is abandoned. */
+export const SERV_TIMEOUT_MS = 60_000;
+
 export const SERV_BASE_URL = (
   process.env.SERV_BASE_URL ?? "https://inference-api.openserv.ai/v1"
 ).replace(/\/$/, "");
@@ -100,6 +103,7 @@ Task: ${input.task}`;
             { role: "user", content: JSON.stringify({ ...input, instruction }) },
           ],
         }),
+        signal: AbortSignal.timeout(SERV_TIMEOUT_MS),
       });
       if (!response.ok) {
         const text = await response.text();

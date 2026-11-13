@@ -174,13 +174,12 @@ export function SubstitutionList(props) {
  * @returns {string}
  */
 export function VerificationPanel(props) {
+  const verdict = props.verdict ?? {
+    kind: props.ok ? "verified" : "fault",
+    label: props.ok ? "every payment confirmed on chain" : "a payment is unconfirmed",
+  };
   const head = html`<div class="verify-head">
-    ${raw(
-      StatusChip({
-        kind: props.ok ? "verified" : "fault",
-        label: props.ok ? "every payment confirmed on chain" : "a payment is unconfirmed",
-      }),
-    )}
+    ${raw(StatusChip(verdict))}
     <span class="headline">${props.head} on ${props.network}</span>
     <span class="spacer"></span>
     <span class="verify-note">${props.note}</span>
@@ -194,7 +193,11 @@ export function VerificationPanel(props) {
       : ""}
     ${props.attestation
       ? html`<div class="hashline">
-          <b>Identity</b> the head is signed by the key Kite publishes for this DID<br />
+          <b>Identity</b> ${props.attestation.covers === false
+            ? html`the key Kite publishes for this DID signed an <b>earlier</b> head of this log
+                (${props.attestation.signedHead.slice(0, 14)}…), not the current one — it does
+                not cover this log until it is re-signed`
+            : "the head is signed by the key Kite publishes for this DID"}<br />
           <b>did</b> ${props.attestation.did}<br />
           <b>signing address</b> ${props.attestation.address}<br />
           <b>signature</b> ${props.attestation.signature.slice(0, 26)}…
@@ -240,14 +243,20 @@ export function VerificationPanel(props) {
     ]),
   });
 
+  const notes = (props.notes ?? []).length
+    ? html`<ul class="caveat">${props.notes.map((note) => html`<li>${note}</li>`)}</ul>`
+    : "";
+
   return html`${raw(Panel({ head: "", body: head + table }))}
+    ${notes}
     ${raw(
       Caveat({
         body:
           `These rows were read from the chain ${props.checkedAt}. Every time this answer ` +
           "is made, the chain is read again; the edge may hand you the answer it already " +
           "made, for up to thirty seconds. Editing an earlier decision in the log breaks every " +
-          "link after it, and the verifier says which record broke.",
+          "link after it, and the verifier says which record broke. The hash chain shows the " +
+          "file is consistent; only a signature over its head shows who wrote it.",
       }),
     )}`;
 }

@@ -13,6 +13,9 @@ import { REPO_ROOT } from "../src/paths.js";
 import { DecisionLog } from "../src/log.js";
 import { fetchPublishedKeys, verifyAttestation, type Attestation } from "../src/attest.js";
 
+const AGENT_DID =
+  process.env.KPASS_AGENT_DID ?? "did:kite:ind-akoladefatoki108:capsule-agent";
+
 const DEPLOYED = (
   process.env.VERIFIER_BASE_URL ?? "https://capsule-phi-blond.vercel.app"
 ).replace(/\/$/, "");
@@ -92,14 +95,58 @@ async function main() {
     `${paidSteps.length} checked`,
   );
 
+  // 2b. The contrast run, held to the same rules: its log is intact, its
+  //     receipts point at that log, and its signature covers that log's head.
+  const runs: Array<{ name: string; receipts: Receipts }> = [
+    { name: "recorded run", receipts },
+  ];
+  try {
+    const contrast = JSON.parse(
+      await readFile(path.join(REPO_ROOT, "docs", "runs", "contrast", "receipts.json"), "utf8"),
+    ) as Receipts;
+    runs.push({ name: "contrast run", receipts: contrast });
+    const contrastLog = await new DecisionLog({
+      path: path.join(REPO_ROOT, contrast.log.path),
+    }).verifyChain();
+    record(
+      "contrast log hash chain is intact",
+      contrastLog.ok,
+      contrastLog.ok ? `${contrastLog.checked} records` : `broken at ${contrastLog.brokenAt}`,
+    );
+    record(
+      "contrast log head matches its receipts",
+      contrastLog.head === contrast.log.head,
+      `${String(contrastLog.head).slice(0, 14)} vs ${String(contrast.log.head).slice(0, 14)}`,
+    );
+    record(
+      "the embedded contrast run matches its receipts",
+      receipts.contrast?.log.head === contrast.log.head,
+      `${String(receipts.contrast?.log.head).slice(0, 14)} vs ${String(contrast.log.head).slice(0, 14)}`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  for (const run of runs) {
+    record(
+      `${run.name}: the signature covers the current log head`,
+      run.receipts.attestation?.head === run.receipts.log.head,
+      run.receipts.attestation
+        ? `signed ${run.receipts.attestation.head.slice(0, 14)}, log ${String(run.receipts.log.head).slice(0, 14)}` +
+            (run.receipts.attestation.head === run.receipts.log.head ? "" : " — re-sign with `npm run receipts`")
+        : "no attestation",
+    );
+  }
+
   // 3. The attestation: the agent's signature over the log head, checked
   //    against the key the Passport publishes for its DID. The key is fetched
-  //    live from Kite's public directory, so this is not our own copy.
+  //    live from Kite's public directory, so this is not our own copy, and the
+  //    DID is the one this project's agent is, not whichever DID the
+  //    attestation names.
   if (receipts.attestation) {
     try {
-      const published = await fetchPublishedKeys(receipts.attestation.did);
+      const published = await fetchPublishedKeys(AGENT_DID);
       const attestation = receipts.attestation as unknown as Attestation;
-      const result = await verifyAttestation(attestation, published);
+      const result = await verifyAttestation(attestation, published, { did: AGENT_DID });
       record(
         "the log head is signed by the key the Passport publishes",
         result.ok,
@@ -111,7 +158,7 @@ async function main() {
         ...attestation,
         head: `0x${"11".repeat(32)}`,
       } as unknown as Attestation;
-      const bad = await verifyAttestation(tampered, published);
+      const bad = await verifyAttestation(tampered, published, { did: AGENT_DID });
       record(
         "a tampered head does not verify",
         !bad.ok,

@@ -307,6 +307,8 @@ export function normaliseSession(records: unknown[]): {
   id: string | null;
   max_amount_per_tx: string | null;
   max_total_amount: string | null;
+  /** The wallet that paid, when the log names one. Payments are checked against it. */
+  payer: string | null;
 } | null {
   for (const raw of records) {
     const record = raw as Record<string, unknown>;
@@ -331,11 +333,20 @@ export function normaliseSession(records: unknown[]): {
       values.total_cap ??
       values.max_total ??
       null;
-    if (id || perTx || total) {
+    const payer =
+      values.payer ??
+      values.payer_address ??
+      values.payerAddress ??
+      values.wallet ??
+      values.wallet_address ??
+      values.walletAddress ??
+      null;
+    if (id || perTx || total || payer) {
       return {
         id: id === null ? null : String(id),
         max_amount_per_tx: perTx === null ? null : String(perTx),
         max_total_amount: total === null ? null : String(total),
+        payer: typeof payer === "string" ? payer : null,
       };
     }
   }

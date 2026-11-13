@@ -8,7 +8,8 @@
  */
 import { randomUUID } from "node:crypto";
 import { Kpass, isCapRefusal, type KpassResult } from "./kpass.js";
-import { ServClient, parseChoice, SYSTEM_PROMPT } from "./serv.js";
+import { ServClient, parseChoice, SERV_TIMEOUT_MS, SYSTEM_PROMPT } from "./serv.js";
+import { chainByName, DEFAULT_CHAIN_ID } from "./chains.js";
 import {
   loadMenu,
   relevantTo,
@@ -84,9 +85,17 @@ export class Agent {
     // Start from the session the user actually signed, so the budget the
     // model is told is the real one and not a guess.
     const current = await this.kpass.currentSession();
-    const chainNetwork =
-      process.env.SETTLEMENT_CHAIN === "kite" ? "eip155:2366" : "eip155:8453";
-    const chainSymbol = process.env.SETTLEMENT_CHAIN === "kite" ? "USDC.e" : "USDC";
+    // The chain comes from the registry, the one place that knows every chain,
+    // so a run on kite-testnet is recorded as kite-testnet and not as Base.
+    const chain = chainByName(process.env.SETTLEMENT_CHAIN ?? DEFAULT_CHAIN_ID);
+    const chainNetwork = chain.network;
+    const chainSymbol = chain.assetSymbol;
+    // The payments the account had already made before this run. The
+    // settlement reference is matched from the activity log afterwards, and a
+    // payment that was there before the run can never belong to it.
+    const before = new Set(
+      (await this.kpass.payments()).map((payment) => payment.txHash.toLowerCase()),
+    );
     let session = {
       session_id: current?.session_id ?? null,
       max_amount_per_tx: current?.max_amount_per_tx ?? null,
@@ -172,7 +181,9 @@ export class Agent {
           price_usd: entry.price_usd,
           asset: chainSymbol,
           chain: chainNetwork,
-          tx_hash: null,
+          // The execute reply carries the settlement reference when the CLI
+          // returns one; otherwise it is matched from the activity log below.
+          tx_hash: step.tx_hash,
           reason: decision.reason,
           fact: factToCover,
         };
@@ -224,34 +235,87 @@ export class Agent {
         continue;
       }
 
+      // Not a limit refusal: something else went wrong. It still goes in the
+      // log — if a record is not written, the attempt did not happen, and a
+      // failure that settled anyway must not vanish from the record.
+      const errorCode = result.error_code ?? `exit_${result.exit_code}`;
+      await this.options.log.append(
+        {
+          kind: "note",
+          message:
+            `the payment for ${entry.service} ${entry.path} ($${entry.price_usd}, ${entry.url}) ` +
+            `failed outside the session limits: ${errorCode} — ${result.error ?? "unknown failure"}. ` +
+            "The run stopped here.",
+        },
+        {
+          id: session.session_id,
+          max_amount_per_tx: session.max_amount_per_tx,
+          max_total_amount: session.max_total_amount,
+        },
+      );
       refusals.push({
         endpoint: `${entry.service} ${entry.path}`,
-        error_code: result.error_code ?? `exit_${result.exit_code}`,
+        error_code: errorCode,
         message: result.error ?? "unknown failure",
       });
       break;
     }
 
     // The settlement reference lives in the CLI's activity log, not in the
-    // execute reply. Match it back to each step by the URL that was paid.
-    const payments = await this.kpass.payments();
-    for (const step of steps) {
-      if (step.outcome !== "paid" || step.tx_hash) continue;
-      const payment = payments.find((entry) => entry.url === step.url);
-      if (payment) step.tx_hash = payment.txHash;
-    }
-    // Write the settlement reference into the log record it belongs to, so the
-    // chain covers the hash of the transaction and not a placeholder.
+    // execute reply. Match each purchase that still lacks one to a payment
+    // made *during this run* — never one that was in the activity log before
+    // it started — for the same URL. Each payment is used once, so two
+    // purchases of one URL cannot both claim the same transaction.
+    const payments = (await this.kpass.payments()).filter(
+      (payment) => !before.has(payment.txHash.toLowerCase()),
+    );
+    const used = new Set<string>(
+      steps.flatMap((step) => (step.tx_hash ? [step.tx_hash.toLowerCase()] : [])),
+    );
+    const claim = (url: string): string | null => {
+      const payment = payments.find(
+        (entry) => entry.url === url && !used.has(entry.txHash.toLowerCase()),
+      );
+      if (!payment) return null;
+      used.add(payment.txHash.toLowerCase());
+      return payment.txHash;
+    };
     const records = await this.options.log.read();
     for (const record of records) {
-      if (record.decision.kind !== "purchase" || record.decision.tx_hash) continue;
-      const payment = payments.find(
-        (entry) => entry.url === (record.decision as { url: string }).url,
+      const decision = record.decision;
+      if (decision.kind !== "purchase" || decision.tx_hash) continue;
+      const txHash = claim(decision.url);
+      if (!txHash) continue;
+      decision.tx_hash = txHash;
+      const step = steps.find(
+        (candidate) =>
+          candidate.outcome === "paid" && !candidate.tx_hash && candidate.url === decision.url,
       );
-      if (!payment) continue;
-      record.decision.tx_hash = payment.txHash;
+      if (step) step.tx_hash = txHash;
     }
+    // A payment made during this run that no purchase accounts for is money
+    // that left the wallet without a decision behind it. It goes in the log.
+    const unaccounted = payments.filter((payment) => !used.has(payment.txHash.toLowerCase()));
+    // Write the settlement references into the records they belong to, so the
+    // chain covers the hash of the transaction and not a placeholder.
     await this.options.log.rewrite(records);
+    for (const payment of unaccounted) {
+      await this.options.log.append(
+        {
+          kind: "note",
+          message:
+            `a payment was made during this run that no purchase record accounts for: ` +
+            `${payment.url}, ${payment.amountRaw || "unknown amount"} base units of ${payment.asset || chainSymbol}, ` +
+            `transaction ${payment.txHash}`,
+        },
+        {
+          id: session.session_id,
+          max_amount_per_tx: session.max_amount_per_tx,
+          max_total_amount: session.max_total_amount,
+        },
+      );
+    }
+    const finalRecords = unaccounted.length ? await this.options.log.read() : records;
 
     // The receipts are the artifact. If the reasoning layer fails at the last
     // step, the run is still recorded and the gap is stated plainly.
@@ -288,7 +352,7 @@ export class Agent {
       session,
       coveredFacts,
       missingFacts: this.options.requiredFacts.filter((fact) => !covered.has(fact)),
-      records,
+      records: finalRecords,
     };
   }
 
@@ -368,31 +432,52 @@ export class Agent {
         },
       },
     };
-    const response = await fetch(
-      `${process.env.SERV_BASE_URL ?? "https://inference-api.openserv.ai/v1"}/chat/completions`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${process.env.SERV_API_KEY ?? ""}`,
-        },
-        body: JSON.stringify(body),
-      },
-    );
-    if (!response.ok) {
-      throw new Error(`SERV HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`);
-    }
-    const payload = (await response.json()) as {
+    // Every call is recorded, failed ones too, with the time it really took.
+    const at = new Date().toISOString();
+    const started = Date.now();
+    const purpose = `decision ${this.serv.calls.length + 1}`;
+    let payload: {
       choices?: Array<{ message?: { content?: string } }>;
       usage?: Record<string, number>;
+      serv?: { features?: string[] };
     };
+    try {
+      const response = await fetch(
+        `${process.env.SERV_BASE_URL ?? "https://inference-api.openserv.ai/v1"}/chat/completions`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${process.env.SERV_API_KEY ?? ""}`,
+          },
+          body: JSON.stringify(body),
+          // A reasoning call that never answers must not hold the run open.
+          signal: AbortSignal.timeout(SERV_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(`SERV HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`);
+      }
+      payload = (await response.json()) as typeof payload;
+    } catch (error) {
+      this.serv.calls.push({
+        at,
+        model,
+        purpose,
+        latency_ms: Date.now() - started,
+        usage: null,
+        serv_features: null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
     this.serv.calls.push({
-      at: new Date().toISOString(),
+      at,
       model,
-      purpose: `decision ${this.serv.calls.length + 1}`,
-      latency_ms: 0,
+      purpose,
+      latency_ms: Date.now() - started,
       usage: payload.usage ?? null,
-      serv_features: null,
+      serv_features: payload.serv?.features ?? null,
       error: null,
     });
     const content = payload.choices?.[0]?.message?.content ?? "{}";

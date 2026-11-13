@@ -70,6 +70,9 @@ export async function buildArtifact(
 
   const receipts = buildReceipts({
     records,
+    // The path the receipts point a reader at: the log they were built from,
+    // relative to the repository, with forward slashes on every platform.
+    logPath: path.relative(REPO_ROOT, path.resolve(input.logPath)).split(path.sep).join("/"),
     session,
     facts: input.facts,
     menu: input.menu,
