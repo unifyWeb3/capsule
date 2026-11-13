@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Capsule — verify a spending record</title>
+    <title>Capsule: verify a spending record</title>
     <meta
       name="description"
       content="Paste the URL of an agent's published spending log. Capsule fetches it, checks its hash chain, reads every payment off the chain, and shows you the check as it happens."
@@ -13,24 +13,34 @@
   </head>
   <body>
     <a class="skip" href="#trace">Skip to the check</a>
+        <div class="upbar">
+      <div class="upbar-inner">
+        <span class="upbar-tag">SERV Hackathon 02 · Kite track</span>
+        <span class="upbar-right">
+          <span class="upbar-item"><i class="dot dot-verified" aria-hidden="true"></i>Record signed</span>
+          <span class="upbar-item">Base mainnet · USDC</span>
+          <a class="upbar-link" href="https://github.com/unifyWeb3/capsule" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        </span>
+      </div>
+    </div>
     <div class="shell">
       <header>
-        <span class="wordmark">
+        <div class="head-top">
+          <span class="wordmark">
           <svg viewBox="0 0 32 32" aria-hidden="true">
             <rect width="32" height="32" rx="8" fill="var(--surface-2)" />
             <path d="M9 21V11l7 5 7-5v10" stroke="var(--settled)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           Capsule
         </span>
-        <nav class="site-nav" aria-label="Site">
-          <a href="/">The record</a>
-          <a href="/runs.html">The runs</a>
+                <nav class="site-nav" aria-label="Site">
+          <a href="/">Record</a>
+          <a href="/runs.html">Runs</a>
           <a href="/replay.html">Replay</a>
-          <a href="/verify.html" aria-current="page">Verify a log</a>
           <a href="/docs/security-model.html">Security model</a>
-          <a href="/docs/format.html">Log format</a>
-          <a href="/components.html">Components</a>
+          <a class="nav-cta" href="/verify.html">Verify your log <span aria-hidden="true">→</span></a>
         </nav>
+        </div>
         <h1>
           A spending record, <span class="accent">checked</span> by someone who did not
           write it.
@@ -80,12 +90,46 @@
         <h2 id="verify-h">Verification</h2>
         <div id="verify-body"></div>
       </section>
-
-      <footer>
-        <span>Capsule — the record of what an agent did with your money.</span>
-        <span>The payments are the chain's. The refusals are the owner's claim.</span>
-      </footer>
     </div>
+
+    <footer class="footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <span class="wordmark wordmark-light"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#1d232b"/><path d="M9 21V11l7 5 7-5v10" stroke="#5cc3b2" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Capsule</span>
+          <p class="footer-tag">The record of what an agent did with your money.</p>
+          <p class="footer-note">The payments are the chain's. The refusals are the owner's claim.</p>
+        </div>
+        <nav class="footer-col" aria-label="Product">
+          <h3>Product</h3>
+          <a href="/">The record</a>
+          <a href="/runs.html">The runs</a>
+          <a href="/replay.html">Replay</a>
+          <a href="/verify.html">Verify your log</a>
+          <a href="/components.html">The components</a>
+        </nav>
+        <nav class="footer-col" aria-label="Docs">
+          <h3>Docs</h3>
+          <a href="/docs/security-model.html">Security model</a>
+          <a href="/docs/format.html">The log format</a>
+          <a href="https://github.com/unifyWeb3/capsule/blob/main/docs/ENGINEERING-REVIEW.md" rel="noreferrer">Engineering review</a>
+          <a href="https://github.com/unifyWeb3/capsule/blob/main/docs/ARCHITECTURE.md" rel="noreferrer">Architecture</a>
+        </nav>
+        <nav class="footer-col" aria-label="Elsewhere">
+          <h3>Elsewhere</h3>
+          <a href="https://github.com/unifyWeb3/capsule" rel="noreferrer">GitHub</a>
+          <a href="/proof.json">/proof.json</a>
+          <a href="/decision-log.jsonl">/decision-log.jsonl</a>
+          <a href="/examples/foreign-log.jsonl">Foreign log example</a>
+          <a href="https://docs.gokite.ai/passport" rel="noreferrer">Kite Passport</a>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 unifyWeb3 · MIT</span>
+        <span>Built with SERV Reasoning and Kite Agent Passport</span>
+        <a href="https://capsule-phi-blond.vercel.app" rel="noreferrer">capsule-phi-blond.vercel.app</a>
+      </div>
+    </footer>
+
 
     <script type="module" src="/trace.js"></script>
   </body>

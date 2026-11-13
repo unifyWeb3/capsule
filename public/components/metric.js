@@ -44,6 +44,7 @@ export function Metric(props) {
 export function SessionBar(props) {
   const ratio = Math.max(0, Math.min(100, props.spentRatio ?? 0));
   return html`<dl class="session" id="session">
+    <div class="session-row">
     ${raw(
       Metric({ label: "Budget you signed", value: props.budget }) +
         Metric({ label: "Cap per call", value: props.perCall }) +
@@ -54,6 +55,7 @@ export function SessionBar(props) {
           tone: props.exhausted ? "warn" : "normal",
         }),
     )}
+    </div>
     <div class="meter">
       <div
         class="meter-track"

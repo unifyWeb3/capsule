@@ -32,7 +32,7 @@ import {
 function asymmetry() {
   return Callout({
     body:
-      "A payment leaves a transaction, so anyone can re-read it — that is what the table " +
+      "A payment leaves a transaction, so anyone can re-read it. That is what the table " +
       "below does. A refusal leaves nothing behind: it exists in the signed log and in the " +
       "Passport's error code, and that is where it stops. " +
       "That asymmetry is exactly why the refusals are the valuable half and also the unproven " +
@@ -76,7 +76,7 @@ async function main() {
   const publishedLog = logUrlFromLocation();
 
   if (publishedLog) {
-    document.title = "Capsule — verifying a published record";
+    document.title = "Capsule: verifying a published record";
     document.querySelector("h1").innerHTML =
       'A spending record, <span class="accent">checked</span> by someone who did not write it.';
     document.querySelector(".standfirst").innerHTML =
@@ -91,7 +91,7 @@ async function main() {
     return;
   }
 
-  document.title = "Capsule — your agent's spending record";
+  document.title = "Capsule: your agent's spending record";
   try {
     renderAll(await fetchOurProof());
   } catch (error) {

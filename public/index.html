@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Capsule — your agent's spending record</title>
+    <title>Capsule: your agent's spending record</title>
     <meta
       name="description"
       content="Every purchase your agent made, every one it was refused, and the price of each. Refusals decided by your Kite Passport session, not by the agent."
@@ -13,51 +13,91 @@
   </head>
   <body>
     <a class="skip" href="#record">Skip to the record</a>
+        <div class="upbar">
+      <div class="upbar-inner">
+        <span class="upbar-tag">SERV Hackathon 02 · Kite track</span>
+        <span class="upbar-right">
+          <span class="upbar-item"><i class="dot dot-verified" aria-hidden="true"></i>Record signed</span>
+          <span class="upbar-item">Base mainnet · USDC</span>
+          <a class="upbar-link" href="https://github.com/unifyWeb3/capsule" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        </span>
+      </div>
+    </div>
     <div class="shell">
       <header>
-        <span class="wordmark">
+        <div class="head-top">
+          <span class="wordmark">
           <svg viewBox="0 0 32 32" aria-hidden="true">
             <rect width="32" height="32" rx="8" fill="var(--surface-2)" />
             <path d="M9 21V11l7 5 7-5v10" stroke="var(--settled)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           Capsule
         </span>
-        <nav class="site-nav" aria-label="Site">
-          <a href="/" aria-current="page">The record</a>
-          <a href="/runs.html">The runs</a>
+                <nav class="site-nav" aria-label="Site">
+          <a href="/" aria-current="page">Record</a>
+          <a href="/runs.html">Runs</a>
           <a href="/replay.html">Replay</a>
-          <a href="/verify.html">Verify a log</a>
           <a href="/docs/security-model.html">Security model</a>
-          <a href="/docs/format.html">Log format</a>
-          <a href="/components.html">Components</a>
+          <a class="nav-cta" href="/verify.html">Verify your log <span aria-hidden="true">→</span></a>
         </nav>
-        <h1>
-          Every purchase your agent made, every one it was
-          <span class="accent">refused</span>, and the price of each.
-        </h1>
-        <p class="standfirst">
-          The refusals were decided by <strong>your Kite Passport session</strong>, not by the
-          agent. The agent proposes; the limit disposes; the record keeps both.
-        </p>
-
-        <div class="proof-strip" aria-label="What this record is anchored to">
-          <span class="proof-item"><i class="dot dot-settled"></i>Payments · <strong>chain-verified</strong> — Base, USDC</span>
-          <span class="proof-item"><i class="dot dot-refused"></i>Refusals · <strong>Kite's own codes</strong>, decided in the Passport backend</span>
-          <span class="proof-item"><i class="dot dot-verified"></i>The record · <strong>signed</strong> by the Kite-bound agent key</span>
         </div>
-
-        <div class="cta-row">
-          <a class="cta cta-primary" href="/replay.html">Replay the run — 30 seconds</a>
-          <a class="cta cta-secondary" href="/verify.html">Verify your own log</a>
-        </div>
-
-        <div class="hero-stat">
-          <span class="hero-stat-number">20.4×</span>
-          <span class="hero-stat-label">
-            the price of the limit — <strong>$0.051</strong> of evidence the cap refused,
-            against a <strong>$0.0025</strong> budget.
-            <a href="#cost">Why the limit cost this →</a>
-          </span>
+        <div class="hero">
+          <div class="hero-text">
+            <h1>
+              What your agent bought. What it was refused. <span class="accent">What it cost.</span>
+            </h1>
+            <p class="standfirst">
+              Capsule records every purchase your agent tries to make. Your Kite Passport
+              session holds the cap. The record keeps both halves: the money that moved,
+              and the refusals that didn't.
+            </p>
+            <div class="proof-strip" aria-label="What this record is anchored to">
+              <span class="proof-item"><i class="dot dot-settled"></i>Payments · <strong>chain-verified</strong> on Base</span>
+              <span class="proof-item"><i class="dot dot-refused"></i>Refusals · <strong>Kite's own error codes</strong></span>
+              <span class="proof-item"><i class="dot dot-verified"></i>The record · <strong>signed by the agent's Kite key</strong></span>
+            </div>
+            <div class="cta-row">
+              <a class="cta cta-primary" href="/replay.html">Replay the run: 30 seconds</a>
+              <a class="cta cta-secondary" href="/verify.html">Verify your own log</a>
+            </div>
+            <div class="hero-stat">
+              <span class="hero-stat-number">20.4×</span>
+              <span class="hero-stat-label">
+                the price of the limit: <strong>$0.051</strong> of evidence the cap refused,
+                against a <strong>$0.0025</strong> budget.
+                <a href="#cost">Why the limit cost this →</a>
+              </span>
+            </div>
+          </div>
+          <aside class="receipt" aria-label="The recorded run, set as a receipt">
+            <div class="seal-stamp">LIMIT HELD<br />20.4×</div>
+            <div class="receipt-head"><b>Capsule · Recorded run</b><span>2026-11-12</span></div>
+            <p class="receipt-task"><b>task:</b> a cautious assessment of ETH: price, trend, volatility, the main risks</p>
+            <div class="receipt-row">
+              <span class="n">0</span>
+              <span class="what">Agent402 Tools /api/crypto-price<small>current price, 24h change, volume</small></span>
+              <span class="outcome paid">PAID<br />$0.001</span>
+            </div>
+            <div class="receipt-row">
+              <span class="n">1</span>
+              <span class="what">Otto AI /filtered-news<small>sentiment and recent headlines</small></span>
+              <span class="outcome paid">PAID<br />$0.001</span>
+            </div>
+            <div class="receipt-row">
+              <span class="n">2</span>
+              <span class="what">Google Trends (x402Atlas) /trend-over-time<small>session_rule_exceeded: over the cap for one purchase</small></span>
+              <span class="outcome refused">REFUSED<br />$0.05</span>
+            </div>
+            <div class="receipt-row">
+              <span class="n">3</span>
+              <span class="what">Otto AI /funding-rates<small>session_total_exceeded: would take the session past its total</small></span>
+              <span class="outcome refused">REFUSED<br />$0.001</span>
+            </div>
+            <div class="receipt-foot">
+              <span>spent <b>$0.002</b> of <b>$0.0025</b> · records <b>4</b></span>
+              <span>head <b>0xd6af6f6b…</b> · signed by the agent's Kite key</span>
+            </div>
+          </aside>
         </div>
 
         <div id="session-slot"></div>
@@ -103,12 +143,46 @@
         <h2 id="surfaces-h">Surfaces</h2>
         <div class="surfaces" id="surfaces-body"></div>
       </section>
-
-      <footer>
-        <span>Built for the SERV Hackathon, Edition 02 — Kite track.</span>
-        <span>SERV Reasoning decides. The Passport disposes. The record keeps both.</span>
-      </footer>
     </div>
+
+    <footer class="footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <span class="wordmark wordmark-light"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#1d232b"/><path d="M9 21V11l7 5 7-5v10" stroke="#5cc3b2" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Capsule</span>
+          <p class="footer-tag">The record of what an agent did with your money.</p>
+          <p class="footer-note">The agent asks. The Passport decides. The record keeps both.</p>
+        </div>
+        <nav class="footer-col" aria-label="Product">
+          <h3>Product</h3>
+          <a href="/">The record</a>
+          <a href="/runs.html">The runs</a>
+          <a href="/replay.html">Replay</a>
+          <a href="/verify.html">Verify your log</a>
+          <a href="/components.html">The components</a>
+        </nav>
+        <nav class="footer-col" aria-label="Docs">
+          <h3>Docs</h3>
+          <a href="/docs/security-model.html">Security model</a>
+          <a href="/docs/format.html">The log format</a>
+          <a href="https://github.com/unifyWeb3/capsule/blob/main/docs/ENGINEERING-REVIEW.md" rel="noreferrer">Engineering review</a>
+          <a href="https://github.com/unifyWeb3/capsule/blob/main/docs/ARCHITECTURE.md" rel="noreferrer">Architecture</a>
+        </nav>
+        <nav class="footer-col" aria-label="Elsewhere">
+          <h3>Elsewhere</h3>
+          <a href="https://github.com/unifyWeb3/capsule" rel="noreferrer">GitHub</a>
+          <a href="/proof.json">/proof.json</a>
+          <a href="/decision-log.jsonl">/decision-log.jsonl</a>
+          <a href="/examples/foreign-log.jsonl">Foreign log example</a>
+          <a href="https://docs.gokite.ai/passport" rel="noreferrer">Kite Passport</a>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 unifyWeb3 · MIT</span>
+        <span>Built with SERV Reasoning and Kite Agent Passport</span>
+        <a href="https://capsule-phi-blond.vercel.app" rel="noreferrer">capsule-phi-blond.vercel.app</a>
+      </div>
+    </footer>
+
 
     <script type="module" src="/app.js"></script>
   </body>

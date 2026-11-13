@@ -32,8 +32,8 @@ export function CostPanel(props) {
     row.covered
       ? StatusChip({ kind: "verified", label: "covered" })
       : row.blocked
-        ? html`<span class="blocked">blocked by the ${row.blocked.blocked_by} — $${row.blocked.wanted_price_usd}</span>`
-        : html`<span class="blocked">not attempted — the budget was gone</span>`,
+        ? html`<span class="blocked">blocked by the ${row.blocked.blocked_by} · $${row.blocked.wanted_price_usd}</span>`
+        : html`<span class="blocked">not attempted: the budget was gone</span>`,
   ]);
 
   const body = html`${raw(
@@ -67,7 +67,7 @@ export function CostPanel(props) {
           props.contrast.paidTheSame
             ? html`<div class="hashline">
                 The $${props.contrast.paidTheSame.price} endpoint that was <b>refused</b> above
-                was <b>paid</b> here — ${props.contrast.paidTheSame.tx}.<br />
+                was <b>paid</b> here: ${props.contrast.paidTheSame.tx}.<br />
                 The refusals were not a broken agent. They were the limit, doing its job.
               </div>`
             : ""
@@ -110,7 +110,7 @@ export function SubstitutionList(props) {
     if (!row.instead) {
       return html`<div class="side">
         <div class="label">Bought instead</div>
-        <div class="name">nothing — the budget was gone</div>
+        <div class="name">nothing: the budget was gone</div>
         <div class="note">The session was exhausted, so the run ended with the gap named.</div>
       </div>`;
     }
@@ -119,7 +119,7 @@ export function SubstitutionList(props) {
         <div class="label">Bought instead</div>
         <div class="name">${row.instead.service}</div>
         <div class="note">
-          ${row.instead.price}${row.insteadReason ? ` — ${row.insteadReason}` : ""}
+          ${row.instead.price}${row.insteadReason ? ` · ${row.insteadReason}` : ""}
         </div>
       </div>`;
     }
@@ -127,7 +127,7 @@ export function SubstitutionList(props) {
       <div class="label">Tried instead</div>
       <div class="name">${row.instead.service}</div>
       <div class="note">
-        ${row.instead.price} — refused too${row.instead.errorCode
+        ${row.instead.price} · refused too${row.instead.errorCode
           ? ` (${row.instead.errorCode})`
           : ""}.
       </div>
@@ -146,7 +146,7 @@ export function SubstitutionList(props) {
           <div class="side wanted">
             <div class="label">Wanted</div>
             <div class="name">${row.wanted}</div>
-            <div class="note">${row.wantedPrice} — ${row.reason}.</div>
+            <div class="note">${row.wantedPrice} · ${row.reason}.</div>
           </div>
           <span class="arrow" aria-hidden="true">→</span>
           ${raw(side(row))}
@@ -198,7 +198,7 @@ export function VerificationPanel(props) {
           <b>did</b> ${props.attestation.did}<br />
           <b>signing address</b> ${props.attestation.address}<br />
           <b>signature</b> ${props.attestation.signature.slice(0, 26)}…
-          <span style="color:var(--ink-3)">— check it yourself:</span>
+          <span style="color:var(--ink-3)">check it yourself:</span>
           <code>curl -s https://passport.prod.gokite.ai/v1/agents/${props.attestation.did}/signingKeys</code>
         </div>`
       : ""}
@@ -206,7 +206,7 @@ export function VerificationPanel(props) {
       ? html`<div class="hashline">
           <b>Money</b> every transfer above was paid by this wallet<br />
           <b>paying wallet</b> ${props.payer}
-          <span style="color:var(--ink-3)">— the Passport's settlement wallet for this session</span>
+          <span style="color:var(--ink-3)">the Passport's settlement wallet for this session</span>
         </div>`
       : ""}`;
 

@@ -55,7 +55,7 @@ const EXAMPLES = [
   },
   {
     name: "SessionBar",
-    props: "{ budget, perCall, spent, left, spentRatio, exhausted } — all strings except the ratio and the flag",
+    props: "{ budget, perCall, spent, left, spentRatio, exhausted }, all strings except the ratio and the flag",
     example: SessionBar({
       budget: "$0.0025",
       perCall: "$0.002",
@@ -155,11 +155,11 @@ const EXAMPLES = [
     props: "{ steps: Array<{ label, detail, state }> }",
     example: TraceList({
       steps: [
-        { label: "fetched the log", detail: "https://example.com/decision-log.jsonl — 3458 bytes", state: "ok" },
+        { label: "fetched the log", detail: "https://example.com/decision-log.jsonl, 3458 bytes", state: "ok" },
         { label: "parsed the records", detail: "4 decisions read", state: "info" },
         {
           label: "checked the hash chain",
-          detail: "not in Capsule's format — skipped. The payments below were still verified.",
+          detail: "not in Capsule's format, skipped. The payments below were still verified.",
           state: "warn",
         },
         {

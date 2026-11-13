@@ -1,57 +1,55 @@
 # Capsule
 
-**Capsule is the only thing that can tell you what your spending limit cost you.**
+**A spending record for AI agents. Chain-verified where the chain can prove it, honest about the rest.**
 
-Your agent asked for **$0.05** of market data. Your cap was **$0.002**. The Passport
-refused it. That $0.05 was **20× your entire budget** — and nobody knew, because
-nothing else records what an agent was *refused*, at the real price, against the
-budget the user signed with a passkey.
+Your agent asked for $0.05 of market data. Your cap was $0.002. The Passport refused it.
+Nobody knew what your limit had just cost you, because nothing else records what an agent
+was refused, at the real price, against the budget you signed with a passkey.
 
-Capsule records it. Every purchase, every refusal, and the price of each. SERV
-Reasoning decides *what* to buy; a **Kite Passport session**, approved with your
-passkey and held outside this program, is the only thing that can release funds; the
-record keeps both.
-
-And it measures it: the same task, run again with one number changed, so the cost of
-the limit is a measurement and not an assertion.
+Capsule records it. Every purchase, every refusal, and the price of each.
+SERV Reasoning decides what to buy. Your Kite Passport session holds the cap.
+The record keeps both halves.
 
 | | |
 | --- | --- |
-| **What the limit cost** | **$0.051 of evidence against a $0.0025 budget — 20.4×** |
-| **Proof it was the limit** | The same $0.05 endpoint was **refused** at the $0.002 cap and **paid** at the $0.06 cap, in transaction `0xd769e940…` |
-| **Who decided** | The Passport backend, in its own code. Not the agent, and not the code that wanted to spend |
-| **What is chain-verified** | Every payment, read from Base when the answer is made — `/proof.json` never serves a cached answer |
-| **What is not** | The refusals — they leave no transaction. See [the asymmetry](#the-asymmetry) |
-
-<!-- Judge-reachable surfaces -->
-| | | | | | |
-| --- | --- | --- | --- | --- | --- |
-| **Live app** | **Proof endpoint** | **Repository** | **Agent identity** | **Settlement** | **MCP** |
-| `capsule-phi-blond.vercel.app` | `/proof.json` | `github.com/unifyWeb3/capsule` | `did:kite:ind-akoladefatoki108:capsule-agent` | Base mainnet, USDC | `npm run mcp` |
+| **Live app** | [capsule-phi-blond.vercel.app](https://capsule-phi-blond.vercel.app) |
+| **Proof endpoint** | `/proof.json` (no account, no session) |
+| **Replay** | `/replay.html` (watch the run in 30 seconds, no money moves) |
+| **Repository** | `github.com/unifyWeb3/capsule` |
+| **Agent identity** | `did:kite:ind-akoladefatoki108:capsule-agent` |
+| **Settlement** | Base mainnet, USDC |
 
 [![gates](https://github.com/unifyWeb3/capsule/actions/workflows/gates.yml/badge.svg)](https://github.com/unifyWeb3/capsule/actions/workflows/gates.yml)
 
-Built for the **SERV Hackathon, Edition 02 — Kite track**.
+Built for the **SERV Hackathon, Edition 02, Kite track**.
 
----
+## How it works
+
+1. **You set the cap.** A Kite Passport session, approved with your passkey: a limit per
+   call, a total budget, and an asset. The cap lives in Kite's backend, not in the agent's code.
+2. **The agent asks. The Passport decides.** SERV Reasoning proposes one purchase at a time.
+   The Passport checks every amount against the session and refuses in its own code.
+   The agent can try for the better answer. It cannot pay for it.
+3. **Capsule records and proves.** Every attempt is written to a hash-chained log, signed by
+   the agent's Kite-bound key. Every payment is re-read from the chain when the proof is made.
 
 ## Judge it in 60 seconds
 
-1. Open **`/proof.json`**. It lists every attempt, then **re-reads each transaction from
-   the chain** and checks that a USDC transfer of exactly the expected amount was paid by
-   the session's own wallet. The page reports what the chain says, not what this
-   repository claims about it. The response carries `all_payments_verified_on_chain`.
-2. Read the record below. Two purchases settled; two were refused by the Passport, for
-   two different reasons, each with the price it walked away from.
-3. Read **what the limit cost**: **$0.051 of evidence against a $0.0025 budget —
-   20.4×**. Then read the contrast run below, where the same $0.05 endpoint that was
-   refused here was paid. One variable changed, different outcome.
-4. Check the identity. The record is signed by the agent's key, and the key is published
+1. Open **`/proof.json`**. It lists every attempt, then re-reads each transaction from the
+   chain and checks that the expected USDC transfer was paid by the session's wallet.
+   The response carries `all_payments_verified_on_chain`.
+2. Two purchases settled. Two were refused by the Passport, for two different reasons,
+   each with the price it walked away from.
+3. Read **what the limit cost**: **$0.051 of refused evidence against a $0.0025 budget.
+   20.4× the whole budget.**
+4. Check the identity. The log head is signed with the agent's key, and the key is published
    by Kite for the agent's DID:
 
    ```bash
    curl -s https://passport.prod.gokite.ai/v1/agents/did:kite:ind-akoladefatoki108:capsule-agent/signingKeys
    ```
+
+5. Open **/replay.html** and watch the recorded run unfold, one decision at a time.
 
 <!-- BEGIN:GENERATED -->
 <!-- GENERATED BY `npm run readme` FROM docs/receipts.json. Do not edit by hand. -->
@@ -63,28 +61,28 @@ cautious assessment of ETH.
 
 | # | What it tried | Price | Outcome |
 | --- | --- | --- | --- |
-| 0 | `Agent402 Tools /api/crypto-price` | $0.001 | **paid** — `0xf222835b302b905f6d00c5e620cfc59a7b97c1f1d9672eb4c9cdd682e3ecde4e` |
-| 1 | `Otto AI /filtered-news` | $0.001 | **paid** — `0x92031083779833938768c700c2a23a06d340ee08d7c5b124d65939f5f72c2920` |
-| 2 | `Google Trends (x402Atlas) /trend-over-time` | $0.05 | **refused** — `session_rule_exceeded` |
-| 3 | `Otto AI /funding-rates` | $0.001 | **refused** — `session_total_exceeded` |
+| 0 | `Agent402 Tools /api/crypto-price` | $0.001 | **paid** · `0xf222835b302b905f6d00c5e620cfc59a7b97c1f1d9672eb4c9cdd682e3ecde4e` |
+| 1 | `Otto AI /filtered-news` | $0.001 | **paid** · `0x92031083779833938768c700c2a23a06d340ee08d7c5b124d65939f5f72c2920` |
+| 2 | `Google Trends (x402Atlas) /trend-over-time` | $0.05 | **refused** · `session_rule_exceeded` |
+| 3 | `Otto AI /funding-rates` | $0.001 | **refused** · `session_total_exceeded` |
 
 **$0.002 spent of $0.0025.**
 2 settled on chain, 2 refused by the Passport.
 
 ### What the limit cost
 
-The refusals were not free attempts — they were evidence the agent wanted and did not get:
+The refusals were not free attempts; they were evidence the agent wanted and did not get:
 
 | The answer needed | What the record says |
 | --- | --- |
 | current ETH price and 24h change | **covered** |
 | sentiment and recent headlines | **covered** |
-| search interest and trend over the last month | **blocked** — session cap ($0.05) |
-| volatility and drawdown | **blocked** — budget ($0.001) |
-| main risk factors | **not attempted** — the budget was gone |
+| search interest and trend over the last month | **blocked** · session cap ($0.05) |
+| volatility and drawdown | **blocked** · budget ($0.001) |
+| main risk factors | **not attempted**: the budget was gone |
 
 **The limit cost $0.051 of evidence against a
-$0.0025 budget — 20.4× the whole
+$0.0025 budget: 20.4× the whole
 budget.** The agent never got to try main risk factors.
 
 ### The same task, a different limit
@@ -99,7 +97,7 @@ The only thing that changed is the number the user signed.
 | Refused | 2 | 0 |
 | Spent | $0.002 | $0.052 |
 
-The $0.05 endpoint that was **refused** above was **paid** here — [`0xd769e94012206754dcf5c93921aa1fda87e14910d4246553828866851abfdaf5`](https://basescan.org/tx/0xd769e94012206754dcf5c93921aa1fda87e14910d4246553828866851abfdaf5).
+The $0.05 endpoint that was **refused** above was **paid** here: [`0xd769e94012206754dcf5c93921aa1fda87e14910d4246553828866851abfdaf5`](https://basescan.org/tx/0xd769e94012206754dcf5c93921aa1fda87e14910d4246553828866851abfdaf5).
 The refusals were not a broken agent. They were the limit, doing its job.
 
 The same two runs, side by side, at [/runs](https://capsule-phi-blond.vercel.app/runs).
@@ -107,48 +105,63 @@ The same two runs, side by side, at [/runs](https://capsule-phi-blond.vercel.app
 
 ## The three anchors
 
-The record is checkable without trusting this program, because it is anchored three
-times over, by three parties:
+The record is checkable without trusting this program.
 
 | Anchor | Who decides it | How a judge checks it |
 | --- | --- | --- |
 | **The refusals** | The Kite Passport backend, not this code | `session_rule_exceeded` and `session_total_exceeded` are Kite's own error codes |
-| **The payments** | The chain | Two USDC transfers on Base, re-read from the chain at request time by `/proof.json` |
-| **The record itself** | The agent's identity | The log head is signed with the secp256k1 key the Passport binds to the agent's DID; the key is published by Kite and the signature recovers to the address Kite publishes |
-| **The payer** | The session's wallet | Every transfer in the record is checked on chain to have come from the Passport wallet that funded the session, not from some other address |
+| **The payments** | The chain | USDC transfers on Base, re-read from the chain at request time by `/proof.json` |
+| **The record itself** | The agent's identity | The log head is signed with the secp256k1 key the Passport binds to the agent's DID; the key is published by Kite |
+| **The payer** | The session's wallet | Every transfer in the record is checked on chain to have come from the wallet that funded the session |
 
-`npm run verify` runs the whole check against the live deployment and exits zero only
-if all three hold.
-
-How the published record came to be — including the one time the log was re-chained,
-and what that did and did not change — is in [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
+`npm run verify` runs the whole check against the live deployment and exits zero only if
+all three hold.
 
 ## Bring your own record
 
-**Capsule verifies any agent's spending record.** Not just Capsule's.
+Capsule verifies any agent's spending record, not just Capsule's.
 
-This is how somebody else uses it.
-
-If you run an agent that spends money, you publish its decision log — a hash-chained
-JSONL file — anywhere that serves it over https. You hand the link to whoever needs
-to see it: a customer, an auditor, the person who disputes a charge. Capsule fetches
-the log, reads every payment off the chain, and answers. The owner keeps their data;
-nothing is stored here.
+Publish your agent's decision log (a hash-chained JSONL file) anywhere that serves it over
+https. Hand the link to whoever needs to see it. Capsule fetches the log, reads every
+payment off the chain, and answers. The owner keeps their data. Nothing is stored here.
 
 ```bash
-# the JSON answer
 curl "https://capsule-phi-blond.vercel.app/verify?log=https://example.com/decision-log.jsonl&format=json"
 ```
 
-```bash
-# or read it in a browser — this one shows the check happening, step by step
-open "https://capsule-phi-blond.vercel.app/verify?log=https://example.com/decision-log.jsonl"
+Three independent checks:
+
+| Check | Applies to | What it proves |
+| --- | --- | --- |
+| **The payments** | any log with a transaction hash | a transfer of the expected amount was paid on chain |
+| **The refusals** | any log with a priced refusal | what the agent was refused and what it would have cost; the owner's claim |
+| **The hash chain** | logs written in Capsule's format | no earlier decision was edited |
+
+The reader tolerates other systems' formats. It looks for the price, the transaction hash,
+the chain, the endpoint and the error code under the names those systems use: `price_usd`,
+`amount_usd`, `cost.usd`; `tx_hash`, `tx`, `settlement.tx`; `network`, `settlement.network`;
+`service`, `provider`, `target.provider`. A field it cannot find is left empty, never guessed.
+
+There is a worked example, written in a flat schema with no hash chain and different keys:
+
+```
+https://capsule-phi-blond.vercel.app/examples/foreign-log.jsonl
 ```
 
-Or from an agent, as a tool — no wallet, no account, a URL is the credential:
+Its payments are confirmed exactly as ours are. Its hash chain is skipped, and the answer says so.
+
+The fetcher only fetches https, resolves the host once and **connects to the address it
+checked**, refuses any non-public address, re-checks every redirect hop, and caps the size
+and the time.
+
+## Use it from an agent
+
+No wallet, no account. A URL is the credential.
+
+**MCP** (stdio):
 
 ```bash
-npm run mcp        # stdio MCP server: verify_record(log_url), get_proof()
+npm run mcp
 ```
 
 ```json
@@ -162,145 +175,59 @@ npm run mcp        # stdio MCP server: verify_record(log_url), get_proof()
 }
 ```
 
-Two tools: `verify_record(log_url, budget_usd?)` — the full published proof, anybody's
-log; and `get_proof()` — this deployment's own recorded run, re-read from the chain at
-call time. No custody of anything, on purpose.
+Two tools. `verify_record(log_url, budget_usd?)` returns the full published proof for any
+log. `get_proof()` returns this deployment's own recorded run, re-read from the chain at call
+time.
 
-And at machine scale the verifier is itself an x402 merchant — $0.001 per verification,
-paid in USDC from the caller's own Kite Passport session, no Capsule account required:
+**HTTP**, paid by the caller: `POST /api/verify` with `{"log_url": "..."}`. $0.001 USDC per
+verification, x402 on Base. Non-2xx answers cancel settlement, so a buyer never pays for a
+log that cannot be verified.
 
-```bash
-curl -X POST "https://capsule-phi-blond.vercel.app/api/verify" \
-  -H "content-type: application/json" \
-  -d '{"log_url": "https://example.com/decision-log.jsonl"}'
-# → 402 with the x402 challenge (price, network, payTo) until a payment is attached
-```
-
-A non-2xx answer (a log we refuse to fetch, a log that cannot be read) cancels settlement,
-so a buyer never pays for a log that cannot be verified — only for one that can. As with
-Scout, the path is implemented and untested in production: nothing has been paid for a
-verification yet.
-
-Three checks, and they are independent of each other:
-
-| Check | Applies to | What it proves |
-| --- | --- | --- |
-| **The payments** | **any** log with a transaction hash | a transfer of the expected amount was paid on the chain — the chain's answer, not the owner's |
-| **The refusals** | **any** log with a priced refusal | what the agent was refused and what it would have cost — the owner's claim, and the reason it matters |
-| **The hash chain** | logs written in Capsule's format | no earlier decision was edited — a bonus for people who write in our format, and the reason the format is published |
-
-**You do not have to write in our format.** The reader is tolerant: it looks for the
-price, the transaction hash, the chain, the endpoint and the error code under the names
-other systems use — `price_usd`, `amount_usd`, `cost.usd`; `tx_hash`, `tx`,
-`settlement.tx`; `network`, `settlement.network`; `service`, `provider`,
-`target.provider`. A field it cannot find is left empty, never guessed.
-
-There is a worked example, so you do not have to take our word for it: the same two
-payments and two refusals as our recorded run, written in a flat schema with no hash
-chain and different key names.
-
-```
-https://capsule-phi-blond.vercel.app/examples/foreign-log.jsonl
-```
-
-```bash
-curl "https://capsule-phi-blond.vercel.app/verify?log=https://capsule-phi-blond.vercel.app/examples/foreign-log.jsonl&format=json"
-```
-
-Its payments are confirmed against the chain exactly as ours are. Its hash chain is
-skipped, and the answer says so.
-
-Our own log is published, so the path has a real example to point at:
-
-```
-https://capsule-phi-blond.vercel.app/decision-log.jsonl
-```
-
-The fetcher is the one place in this project where the input is hostile, so it only
-fetches https, resolves the host once and **connects to the address it checked** —
-there is no window in which a name can be re-pointed at a private address — refuses
-any non-public address, re-checks every redirect hop, and caps the size and the time.
+**Browser**: `/verify.html`, paste a log URL and watch the check happen step by step.
 
 ## The asymmetry
 
-One thing in this project is half-proven, and it is worth saying plainly rather than
-burying:
+One thing in this project is half-proven.
 
 > **The payments are chain-verified. The refusals are the owner's claim.**
 
-A payment leaves a transaction, so it can be re-read from the chain by anyone. A
-refusal leaves nothing. It exists in the signed log and in the Passport's error
-code — and that is where it stops.
+A payment leaves a transaction, so anyone can re-read it. A refusal leaves nothing. It exists
+in the signed log and in the Passport's error code, and that is where it stops. This is not
+a footnote; it is why the refusals are the valuable half and also the unproven half.
 
-This is not a footnote; it is the reason the refusals are the valuable half and also
-the unproven half. Nobody else records what an agent was refused. We do, and we say
-exactly how far the proof goes.
-
-Closing it means one attestation transaction per refusal, signed by the agent, so a
-refusal becomes something the chain carries. It needs a wallet and a few cents of
-gas. It has not been done.
-
-The other two anchors are complete: the payments are the chain's, and the record
-itself is signed with the key Kite publishes for the agent's DID.
-
-## The pages
-
-| Route | What it is |
-| --- | --- |
-| `/` | The owner's record: every attempt, what the limit cost, and the chain checks |
-| `/runs` | The experiment — the same task under two limits, one variable changed |
-| `/runs/:id` | One run, with its payments read from the chain |
-| `/verify` | **The third-party path.** Paste a log URL and watch the check happen |
-| `/docs/security-model` | What Capsule does **not** prove, in our own words |
-| `/docs/format` | The log format, and a writer you can copy |
-| `/components` | The front-end library, rendered with its real props — the usage docs, executed |
-| `/proof.json` | The same facts as JSON, no account, no session |
-| `/decision-log.jsonl` | The published log itself |
-| `/examples/foreign-log.jsonl` | The same run in another format, as a worked example |
-| `/runs.json`, `/runs/:id.json` | The runs, as data |
-
-**Every proof says when the chain was read.** A payment leaves a transaction, so
-anyone can re-read it; the answer carries `checked_at`, and each page says how
-old the check is. The landing page's proof is not cached at all, so refreshing it
-always re-reads the chain.
-
-## How the limit is enforced
-
-| Layer | What it does | Where |
-| --- | --- | --- |
-| The code | Decides which endpoints could answer the fact being worked on, read from the catalog's own metadata. It does **not** decide what the agent may afford: putting the limit in the code that wants to spend it is the thing this project exists to avoid | `src/menu.ts`, `src/agent.ts` |
-| The Passport backend | Holds the delegation, checks each amount against `max_amount_per_tx` and the running total against `max_total_amount`, and refuses in its own code | `session_rule_exceeded`, `session_total_exceeded` |
-| The merchant | Publishes the price in the x402 challenge; the amount that gets signed is the amount the merchant asked for, not what the model believed it was paying | `src/kite.ts` |
-| The facilitator | Verifies the payment signature and settles the USDC transfer on chain | `https://facilitator.pieverse.io/v2` |
-| This repository | Routes, records and proves. It cannot move money by itself | `src/app.ts`, `src/proof.ts` |
-
-The cap is enforced **outside** the process that wants to spend. That is the whole
-difference between this and the common pattern, where the agent caps itself in a config
-file it can read.
+Closing it means one attestation transaction per refusal, signed by the agent. It needs a
+wallet and a few cents of gas. It has not been done.
 
 ## Capability → mechanism → code
 
 | Capability | Mechanism | Code |
 | --- | --- | --- |
-| The agent decides what to buy | SERV Reasoning, chat completions with a strict JSON schema the model cannot step outside | `src/serv.ts` |
-| The agent buys one fact at a time | A bounded loop: one fact → one proposal → one purchase → the outcome folded back as state | `src/agent.ts` |
-| The relevance of an endpoint is decided by code, not by the model | The catalog says what each endpoint returns; the code matches that against the missing fact and hands the model only the endpoints that could answer it | `src/menu.ts` |
-| The limit is never decided by this repository | The code does not filter by budget at all. The model may try anything; the Passport decides whether the money moves | `src/agent.ts`, `src/kpass.ts` |
-| The spending limit is the user's | A Kite Passport session approved with a passkey, enforced in the Passport's backend | `kpass session create --separate` |
+| The agent decides what to buy | SERV Reasoning, chat completions with a strict JSON schema | `src/serv.ts` |
+| The agent buys one fact at a time | A bounded loop: one fact, one proposal, one purchase | `src/agent.ts` |
+| Relevance is decided by code, not the model | The catalog says what each endpoint returns; the code shortlists | `src/menu.ts` |
+| The limit is never decided by this repository | The code does not filter by budget; the Passport decides | `src/agent.ts`, `src/kpass.ts` |
+| The spending limit is the user's | A Kite Passport session, approved with a passkey, enforced in Kite's backend | `kpass session create --separate` |
 | The refusal is the product | `session_rule_exceeded` and `session_total_exceeded` are read as state, not as errors | `src/kpass.ts`, `src/agent.ts` |
-| The record cannot be quietly edited | An append-only keccak-256 hash chain; editing any earlier record breaks every link after it | `src/log.ts` |
-| The record belongs to an identity | The head is signed with the agent's runtime key and checked against Kite's published key set | `src/attest.ts` |
-| The proof is re-checked, not remembered | `/proof.json` reads each transaction and its transfer log from the chain at request time | `src/proof.ts` |
-| The numbers are not typed by hand | Every figure is generated from the receipts; the README's tables are regenerated by `npm run readme` | `scripts/generate-readme.ts`, `docs/CLAIMS.md` |
+| The record cannot be quietly edited | An append-only keccak-256 hash chain | `src/log.ts` |
+| The record belongs to an identity | The head is signed with the agent's runtime key, checked against Kite's published key set | `src/attest.ts` |
+| The proof is re-checked, not remembered | `/proof.json` reads each transaction and its transfer log at request time | `src/proof.ts` |
+| The numbers are not typed by hand | Every figure is generated from the receipts; `npm run readme` regenerates the tables above | `scripts/generate-readme.ts` |
 
-## What the agent buys from
+## The pages
 
-The menu is the **live Kite service catalog**, read with `ksearch`, filtered to the chain
-and asset the session is funded for. Prices come from the catalog, not from us.
-
-```bash
-npm run menu     # rebuilds docs/menu.json from the live catalog
-```
+| Route | What it is |
+| --- | --- |
+| `/` | The owner's record: every attempt, what the limit cost, the chain checks |
+| `/runs` | The experiment: the same task under two limits, one variable changed |
+| `/runs/:id` | One run, with its payments re-read from the chain |
+| `/replay` | The recorded run, played back one decision at a time |
+| `/verify` | The third-party path: paste a log URL and watch the check happen |
+| `/docs/security-model` | What Capsule does not prove, in our own words |
+| `/docs/format` | The log format, and a writer you can copy |
+| `/components` | The front-end library, rendered with its real props |
+| `/proof.json` | The same facts as JSON, no account |
+| `/decision-log.jsonl` | The published log itself |
+| `/examples/foreign-log.jsonl` | The same run in another format, as a worked example |
 
 ## Run it yourself
 
@@ -312,107 +239,50 @@ npm test                   # no network, no keys, no money
 npm run verify             # the checks against the live deployment
 npm run audit              # every page in a real browser, at two widths
 npm start                  # the merchant on :8080
+npm run mcp                # the verifier as an MCP tool
 ```
 
-`npm run audit` is the gate worth knowing about. It loads all ten pages in
-Chromium at 1440px and 390px and checks four things each: console errors and
-failed requests, content that overflows the viewport, contrast below 4.5:1, and
-whether the page rendered the elements it is supposed to render. The last one
-is the check that matters — a page that catches its own exception and shows a
-tidy red box reports **no** console error, which is why the earlier version of
-this audit passed a broken site.
+`npm run audit` loads every page in Chromium at 1440px and 390px and checks for console
+errors, failed requests, overflow, contrast below 4.5:1, and whether the page rendered the
+elements it is supposed to render. A page that catches its own exception and shows a tidy
+red box still reports no console error; the rendered-content check is the one that matters.
 
 ## The engineering record
 
-Four documents, and each one is a different kind of honesty.
-
 | Document | What it is |
 | --- | --- |
-| [`docs/ENGINEERING-REVIEW.md`](docs/ENGINEERING-REVIEW.md) | Three passes over this codebase as a senior engineer taking it over: the structural problems, the duplication, the performance, the correctness, and what was deliberately left open |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The architecture and the minimal production version — every layer, every endpoint, the schema for the tier we have not built, and a ledger of what is built and what is only designed |
-| [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) | The measured performance pass: the before and after tables, the two chain-read defects it found, and the five candidates it rejected with reasons |
-| [`docs/PROVENANCE.md`](docs/PROVENANCE.md) | How the published record came to be, including the re-chain, and exactly what did and did not change |
+| [`docs/ENGINEERING-REVIEW.md`](docs/ENGINEERING-REVIEW.md) | Three passes as a senior engineer taking the codebase over |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The architecture and the minimal production version |
+| [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md) | The measured performance pass |
+| [`docs/PROVENANCE.md`](docs/PROVENANCE.md) | How the published record came to be |
 
-The numbers in this file come from two places, and it is worth saying which is
-which. The run table and the cost-of-limit section are **generated** — `npm run
-readme` rebuilds them from `docs/receipts.json`, and the block is marked
-`<!-- BEGIN:GENERATED -->`. Every claim in the run, with its source of truth
-and the command that checks it, is in [`docs/CLAIMS.md`](docs/CLAIMS.md),
-which `npm run claims` regenerates. The numbers in the prose above the table
-are typed by hand and are **not** covered by that generator.
-
-To run the agent you need three things this repository cannot provide: a SERV API key, a
-Kite Passport agent with a runtime key, and a spending session approved with a passkey.
-
-```bash
-kpass agent init
-kpass agent create --uid capsule-agent --kind buyer --name Capsule --url https://<your-host>
-kpass agent token create --agent <agent-id>
-kpass agent bind --agent <agent-id> --token <token>
-
-kpass session create --separate \
-  --task-summary "Capsule demo: buy market data under a user-signed spending cap" \
-  --max-amount-per-tx 0.002 --max-total-amount 0.0025 --ttl 168h --assets USDC
-
-npm run demo               # one task, end to end, writes docs/decision-log.jsonl
-npm run receipts            # rebuilds docs/receipts.json from the chain
-npm run claims              # regenerates docs/CLAIMS.md
-npm run readme              # regenerates the tables above
-```
-
-## The business model
-
-**One payer. One number. One sentence. One way to charge.**
-
-| | |
-| --- | --- |
-| **The payer** | The operator who sets the cap on an agent that spends on their behalf. Not the end user: they carry the chargeback risk, and they sign the inference bill the cap sits beside |
-| **The number** | A per-agent monthly fee, with the platform fee a share of the spend it caps |
-| **The sentence** | **Spend control that tells you what your control is costing you.** Today nobody can answer that question. The cap either bites and you never learn what it cost, or it does not bite and you are paying for a limit you never needed |
-| **How to charge** | Two paid surfaces are built: Scout (`/v1/*`, market data) and the verifier (`/api/verify`, $0.001 per record check), both x402 on Base through the Pieverse facilitator. The settlement code ran against real payments for Scout. Neither has *received* money — our host is not on the Passport's allowlist. One message to Kite puts it there |
-
-**This is a hypothesis, and not a business.** Spend-control software is a real, budgeted
-market — corporate card controls and API spend caps are things companies already pay for.
-But no customer has been found, no commitment obtained, and no revenue exists. Every one
-of the 23 public entries in this event is a mechanism demo with no named buyer, so the
-field is weakest on exactly this criterion — and so are we.
-
-## What is real, what is derived, what is self-asserted
-
-| | |
-| --- | --- |
-| **Real, checkable on chain** | The two USDC transfers on Base. Block number, sender, recipient and amount are read from the chain by `/proof.json` when the answer is made, and the answer says when |
-| **Real, decided by Kite** | The refusals. The error codes are the Passport's own, and the session they came from is a session a judge can read about in the same way |
-| **Real, signed** | The decision log's head, signed with the key Kite publishes for the agent's DID |
-| **Derived by us** | The "what the limit cost" figures — they are the catalog's own prices for the endpoints the agent was refused, totalled |
-| **Self-asserted** | **The refusals are not chain-verified.** They exist in the signed log, and the log is a local file the owner could rewrite and re-sign. There is no on-chain record of a refusal today. See [the asymmetry](#the-asymmetry) |
-| **Not public** | The link between the paying wallet and the agent's DID. Kite records it in the session and agent-registration records, but those are not readable by a third party, so we cannot show it to you. We publish both addresses and assert each separately |
-| **Mocked** | Scout, the service in this repository, returns a seeded series for its trend endpoints. It is not what the recorded run bought, and it received no money |
+The numbers above come from two places. The run table and the cost-of-limit section are
+**generated** by `npm run readme` from `docs/receipts.json`; the block is marked
+`<!-- BEGIN:GENERATED -->`. Every claim about the run, its source of truth and the command
+that checks it, is in [`docs/CLAIMS.md`](docs/CLAIMS.md), regenerated by `npm run claims`.
+The numbers in the prose are typed by hand and are not covered by that generator.
 
 ## Honest limitations
 
-- **The pilot's caps are tiny** — $0.002 per call, $0.0025 in total. The scale is set by
-  a small test wallet, not by the design. The mechanism does not care about the magnitude.
-- **Our own service could not be paid.** Its host is not on the Passport's allowlist, so
-  the run buys from third-party merchants and we earn nothing.
-- **The refusals are self-asserted**, as above. The payments are not.
-- **The settlement chain is Base, not Kite chain.** Kite Passport is multichain and the
-  wallet that funded the run holds USDC on Base, so settlement is direct and costs no
-  bridge. Settling on Kite chain instead is a configuration change, not a redesign, but
-  it is untested here.
-- **The agent's endpoint choices come from a curated menu**, not the whole catalog.
-- **One task, one agent, one session.** No multi-agent orchestration, no retry policy, no
+- The pilot's caps are tiny ($0.002 per call, $0.0025 in total). The scale is set by a small
+  test wallet, not by the design.
+- Our own service could not be paid. Its host is not on the Passport's allowlist, so the run
+  buys from third-party merchants and we earn nothing.
+- The refusals are self-asserted, as above. The payments are not.
+- The settlement chain is Base, not Kite chain. Settling on Kite chain instead is a
+  configuration change, not a redesign, but it is untested here.
+- The agent's endpoint choices come from a curated menu, not the whole catalog.
+- One task, one agent, one session. No multi-agent orchestration, no retry policy, no
   database, no queue.
 
 ## Disclosures
 
 - Built with [SERV Reasoning](https://docs.openserv.ai/serv-reasoning/introduction) and
   [Kite Agent Passport](https://docs.gokite.ai/passport).
-- The agent, the decision log, the proof endpoint, the verifier and Scout are ours. The
-  x402 protocol, the Pieverse facilitator, the Kite service catalog, the catalog
+- The agent, the decision log, the proof endpoint, the verifier and Scout are ours.
+  The x402 protocol, the Pieverse facilitator, the Kite service catalog, the catalog
   merchants (Agent402 Tools, Otto AI, Google Trends via x402Atlas) and CoinGecko are not.
-- The private keys for Scout and the agent live outside this repository, and the agent's
-  runtime key is what makes its spending attributable to its DID.
+- The private keys for Scout and the agent live outside this repository.
 - Prices are quoted in USDC and settle on the chain named in the x402 challenge.
 
 ## Licence

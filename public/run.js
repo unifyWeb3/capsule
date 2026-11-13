@@ -22,7 +22,7 @@ import {
 const id = new URLSearchParams(window.location.search).get("id") ?? "recorded";
 
 function render(proof) {
-  document.title = `Capsule — ${id === "contrast" ? "the contrast run" : "the recorded run"}`;
+  document.title = `Capsule: ${id === "contrast" ? "the contrast run" : "the recorded run"}`;
   document.getElementById("title").innerHTML =
     id === "contrast"
       ? 'The same task, <span class="accent">a larger limit</span>.'
@@ -45,7 +45,7 @@ function render(proof) {
     "verify-body",
     `${Callout({
       body:
-        "The payments below are the chain's. The refusals are the owner's claim — a refusal " +
+        "The payments below are the chain's. The refusals are the owner's claim. A refusal " +
         "leaves no transaction, so there is nothing on chain to point at.",
     })}${VerificationPanel(verificationProps(proof))}`,
   );

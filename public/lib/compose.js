@@ -59,7 +59,7 @@ export function recordProps(proof) {
           ? "the session allowed it"
           : step.outcome === "refused"
             ? plainError(step.error_code)
-            : "not a purchase and not a refusal — we could not read this one",
+            : "not a purchase and not a refusal; we could not read this one",
         fact: step.fact ?? null,
         thinking: step.reason ?? null,
         errorCode: step.error_code ?? null,
@@ -92,7 +92,7 @@ export function costProps(proof) {
     : "Nothing was refused";
   const note = counterfactual.attempts?.length
     ? `against a ${money(counterfactual.budget_usd)} budget${
-        multiple ? ` — ${multiple}× the whole budget` : ""
+        multiple ? ` · ${multiple}× the whole budget` : ""
       }`
     : `against a ${money(counterfactual.budget_usd)} budget`;
   return {
@@ -187,16 +187,16 @@ export function verificationProps(proof) {
       merchant: check.merchant ?? "",
       tx: check.tx_hash,
       explorer: proof.chain?.explorer ?? "",
-      block: check.block_number ?? "—",
-      confirmations: check.confirmations ?? "—",
-      recipient: check.recipient ?? "—",
+      block: check.block_number ?? "-",
+      confirmations: check.confirmations ?? "-",
+      recipient: check.recipient ?? "-",
       outcome: check.outcome,
     })),
     log: proof.log
       ? {
           algorithm: proof.log.algorithm,
           records: proof.log.records,
-          head: proof.log.head ?? "—",
+          head: proof.log.head ?? "-",
           intact: proof.log.verified === true,
         }
       : null,
@@ -307,7 +307,7 @@ export function runsProps(data) {
         { value: String(run.refusals), label: "refused" },
         { value: `$${run.spent_usd}`, label: "spent" },
         {
-          value: run.budget_multiplier ? `${run.budget_multiplier}×` : "—",
+          value: run.budget_multiplier ? `${run.budget_multiplier}×` : "-",
           label: "cost of limit",
         },
       ],

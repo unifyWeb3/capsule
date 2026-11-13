@@ -7,7 +7,7 @@
 
 /** A dollar amount. */
 export function money(value) {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") return "-";
   return `$${value}`;
 }
 

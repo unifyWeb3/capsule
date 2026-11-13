@@ -127,7 +127,7 @@ export function RunComparison(props) {
   const payment = props.paidTheSame
     ? html`<div class="hashline">
         The <strong>${props.paidTheSame.price}</strong> endpoint that was <b>refused</b> above
-        was <b>paid</b> here —
+        was <b>paid</b> here:
         <a href="${props.paidTheSame.explorer}/tx/${props.paidTheSame.tx}" target="_blank" rel="noreferrer">
           tx ${props.paidTheSame.tx.slice(0, 12)}…
         </a>
