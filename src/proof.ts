@@ -449,7 +449,7 @@ export async function verifyStep(
 
     if (matching.length === 0) {
       base.outcome = "mismatch";
-      base.note += "; the transfer amount does not match the receipt";
+      base.note = "the transfer amount does not match the receipt";
       return base;
     }
     base.outcome = "confirmed";

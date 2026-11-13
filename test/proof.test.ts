@@ -134,6 +134,7 @@ test("a transfer of the wrong amount does not match", async () => {
   try {
     const result = await verifyStep(step(), chainFor(rpc.url), "1000", PAYER);
     assert.equal(result.outcome, "mismatch");
+    assert.equal(result.note, "the transfer amount does not match the receipt");
   } finally {
     rpc.close();
   }
