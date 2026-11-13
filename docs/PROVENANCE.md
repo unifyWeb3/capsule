@@ -57,6 +57,44 @@ that is already stamped, so it cannot be run twice and quietly move the head aga
 `npm run receipts` then re-derives `docs/receipts.json` from the re-chained log and
 re-signs the new head with the agent's key.
 
+### What was not done: the contrast run was never re-signed
+
+The paragraph above is true of the recorded run. It was **not** true of the contrast
+run. Its log was re-chained to `0xfe47d4ba5430…`, but its attestation still signs the
+head from before the session was added, `0x279e1752b94b…`, and its receipts file was
+never rebuilt — it still named the old head and pointed at the recorded run's log.
+The cause was `npm run receipts`: it carried the contrast run's old attestation forward
+instead of signing the new head, and it did not write the contrast receipts at all.
+
+The script now rebuilds both runs the same way and signs each run's current head.
+`docs/runs/contrast/receipts.json` has been rebuilt from the contrast log, so its head
+and path are right. The **signature** cannot be fixed without the agent's runtime key,
+so until someone with the key runs `npm run receipts`:
+
+- the contrast run's signature covers `0x279e1752b94b…`, a log that no longer exists.
+  The decisions, prices, timestamps and transaction hashes in it are the same; the
+  session is not covered by any signature;
+- `/runs/contrast.json` reports `attestation_covers_log_head: false`, and the page says
+  the signature is over an earlier head;
+- `npm run verify` fails on that check, on purpose.
+
+### The signed message format
+
+Attestations made so far use the domain `capsule.decision-log.v1`, whose DID line has
+a doubled prefix — `did:did:kite:…`. The bytes are what was signed, so v1 is kept as it
+is in order to verify them. New attestations are signed as `capsule.decision-log.v2`,
+which writes the DID once. The verifier reads the domain from the message and checks
+each against its own format.
+
+### The reasoning calls are not in the receipts
+
+Both runs' receipts have `serv.calls: []`. The runs were recorded before the transport
+log — every call to SERV Reasoning, with model, tokens and latency — was captured, so
+nothing in the receipts shows those calls happened. What *is* recorded is the model's
+own reason for every attempt, in the `reason` field of each decision, inside the
+hash-chained and signed log. A new run records every call, including failed ones and
+their real latency.
+
 ## What the three anchors cover, and what they do not
 
 | Claim | Anchor | Status |

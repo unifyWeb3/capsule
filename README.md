@@ -149,9 +149,25 @@ Three checks, and they are independent of each other:
 
 | Check | Applies to | What it proves |
 | --- | --- | --- |
-| **The payments** | **any** log with a transaction hash | a transfer of the expected amount was paid on the chain — the chain's answer, not the owner's |
+| **The payments** | **any** log with a transaction hash | a transfer of the expected amount, **paid by the wallet the log names**, is on the chain — the chain's answer, not the owner's. Each transaction counts once |
 | **The refusals** | **any** log with a priced refusal | what the agent was refused and what it would have cost — the owner's claim, and the reason it matters |
-| **The hash chain** | logs written in Capsule's format | no earlier decision was edited — a bonus for people who write in our format, and the reason the format is published |
+| **The hash chain** | logs written in Capsule's format | the file is internally consistent: no record was edited without the chain being recomputed. It does **not** show the publisher did not rewrite the file — whoever publishes it can recompute the chain. Only a signature over the head shows who wrote it |
+
+**Name the paying wallet.** A matching transfer by somebody else's wallet proves nothing
+about your agent, so a payment only counts as verified when it was paid by the wallet
+the log names — `payer` in the log's session, or `&payer=0x…` on the request. Without
+one, the answer says the amounts matched and the payer was not checked.
+
+The answer's `status` is one of three:
+
+| Status | Means |
+| --- | --- |
+| `verified` | every payment confirmed on chain, paid by the named wallet, no transaction counted twice, and the hash chain (if any) intact |
+| `partially_verified` | nothing contradicts the log, but something could not be checked — no payer named, the chain unreadable, or no payments to check |
+| `unverified` | something contradicts the log — a broken hash chain, a payment the chain does not show, or one transaction claimed twice |
+
+One request reads at most 50 payments from the chain; the rest are reported as not
+read, never as confirmed.
 
 **You do not have to write in our format.** The reader is tolerant: it looks for the
 price, the transaction hash, the chain, the endpoint and the error code under the names
@@ -174,10 +190,11 @@ curl "https://capsule-phi-blond.vercel.app/verify?log=https://capsule-phi-blond.
 Its payments are confirmed against the chain exactly as ours are. Its hash chain is
 skipped, and the answer says so.
 
-Our own log is published, so the path has a real example to point at:
+Our own log is published, so the path has a real example to point at. It predates
+the `payer` field, so pass the session's wallet with the request:
 
 ```
-https://capsule-phi-blond.vercel.app/decision-log.jsonl
+https://capsule-phi-blond.vercel.app/verify?log=https://capsule-phi-blond.vercel.app/decision-log.jsonl&payer=0x1724508463D67b77882375931A46A351C0B69905
 ```
 
 The fetcher is the one place in this project where the input is hostile, so it only

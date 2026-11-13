@@ -245,7 +245,7 @@
     },
     "log": {
       "algorithm": "keccak-256",
-      "path": "docs/decision-log.jsonl",
+      "path": "docs/runs/contrast/decision-log.jsonl",
       "records": 3,
       "head": "0xfe47d4ba5430787995c45b5800dcce27f3a1a813141f4ecbb00f3501fc38e211",
       "verified": true

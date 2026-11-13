@@ -33,6 +33,30 @@ import {
 } from "./proof.js";
 import { PUBLIC_DIR, REPO_ROOT } from "./paths.js";
 
+/**
+ * The headers every response carries.
+ *
+ * The pages load only same-origin scripts and styles. Inline `style`
+ * attributes are used by the renderers, so styles allow 'unsafe-inline';
+ * scripts do not. The favicon is a data: URI.
+ */
+export const SECURITY_HEADERS: Record<string, string> = {
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; "),
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
+  "X-Frame-Options": "DENY",
+};
+
 function env(key: string, fallback = ""): string {
   return (process.env[key] ?? "").trim() || fallback;
 }
@@ -61,6 +85,11 @@ export function readConfig(): AppConfig {
   if (!/^0x[a-fA-F0-9]{40}$/.test(payTo)) {
     throw new Error(
       `PAY_TO is not an EVM address: ${payTo}. It must be 0x followed by 40 hex characters.`,
+    );
+  }
+  if (/^0x0{40}$/.test(payTo)) {
+    throw new Error(
+      "PAY_TO is the zero address. Payments sent there are burned; set it to an address you control.",
     );
   }
   return { chain, payTo, facilitatorUrl: env("FACILITATOR_URL", FACILITATOR_URL) };
@@ -137,6 +166,13 @@ export async function buildProof(
   const { checks, allVerified } = await checkRecord(receipts);
   return {
     status: "verified",
+    // The signature is over one head. If the log was re-chained after it was
+    // signed, the signature no longer covers the published log, and the
+    // payload says so rather than presenting it as if it did.
+    attestation_covers_log_head:
+      receipts.attestation !== null &&
+      receipts.attestation !== undefined &&
+      receipts.attestation.head === receipts.log.head,
     run_id: options.run_id ?? "recorded",
     // When the run happened. This does not move.
     generated_at: receipts.generated_at,
@@ -238,27 +274,38 @@ export function createApp(config: AppConfig = readConfig()) {
     new ExactEvmScheme().registerMoneyParser(chainMoneyParser(config.chain)),
   );
 
-  app.get("/healthz", async (_request, response) => {
-    // The deployment's own view of what it can read. If a file this app needs
-    // is missing from the bundle, the health check says so instead of the page
-    // quietly rendering nothing.
-    const inventory: Record<string, string[]> = {};
-    for (const folder of ["docs", "public", "web"]) {
-      try {
-        inventory[folder] = await readdir(path.join(REPO_ROOT, folder));
-      } catch {
-        inventory[folder] = ["(not in the bundle)"];
-      }
+  // Security headers for everything this function answers. The static pages
+  // served from the edge get the same headers from vercel.json.
+  app.use((_request, response, next) => {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+      response.setHeader(name, value);
     }
-    response.json({
+    next();
+  });
+
+  app.get("/healthz", async (_request, response) => {
+    const health: Record<string, unknown> = {
       ok: true,
       service: "Scout",
       network: config.chain.network,
       asset: config.chain.assetSymbol,
       pay_to: config.payTo,
-      repo_root: REPO_ROOT,
-      bundle: inventory,
-    });
+    };
+    // The bundle inventory is for debugging a deployment, and it names the
+    // server's paths and files. It is only shown when asked for.
+    if (env("HEALTHZ_VERBOSE") === "1") {
+      const inventory: Record<string, string[]> = {};
+      for (const folder of ["docs", "public", "web"]) {
+        try {
+          inventory[folder] = await readdir(path.join(REPO_ROOT, folder));
+        } catch {
+          inventory[folder] = ["(not in the bundle)"];
+        }
+      }
+      health.repo_root = REPO_ROOT;
+      health.bundle = inventory;
+    }
+    response.json(health);
   });
 
   // Everything under /v1 costs money. The middleware answers 402 until the
@@ -370,9 +417,11 @@ export function createApp(config: AppConfig = readConfig()) {
           ? receipts.contrast
           : null;
     if (!run) {
+      // The requested id is not echoed back: it is the requester's text, and
+      // the page shows this message.
       return response.status(404).json({
         error: "no_such_run",
-        message: `there is no run called "${id}". The runs are: recorded, contrast.`,
+        message: "there is no run with that name. The runs are: recorded, contrast.",
       });
     }
     const proof = await buildProof(run, {
@@ -454,9 +503,20 @@ export function createApp(config: AppConfig = readConfig()) {
           "Give the URL of a decision log: /verify?log=https://example.com/decision-log.jsonl",
       });
     }
-    const budget = Number(request.query.budget ?? 0) || undefined;
+    const budgetRaw = String(request.query.budget ?? "").trim();
+    const budget = /^\d+(?:\.\d+)?$/.test(budgetRaw) && Number(budgetRaw) > 0 ? budgetRaw : undefined;
+    const payerRaw = String(request.query.payer ?? "").trim();
+    if (payerRaw && !/^0x[a-fA-F0-9]{40}$/.test(payerRaw)) {
+      return response.status(400).json({
+        error: "bad_payer",
+        message: "payer must be an EVM address: 0x followed by 40 hex characters.",
+      });
+    }
     try {
-      const proof = await verifyPublishedLog(logUrl, { budgetUsd: budget });
+      const proof = await verifyPublishedLog(logUrl, {
+        budgetUsd: budget,
+        payer: payerRaw || undefined,
+      });
       // A short-lived cache: the chain check for a mined transaction does not
       // change, and this endpoint makes network calls. Thirty seconds, and no
       // more — the same window the reader's own head is trusted for, and the

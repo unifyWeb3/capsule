@@ -2,9 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { normaliseDecision, normaliseSession } from "../src/normalize.js";
 
-const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 async function example(name: string): Promise<Array<Record<string, unknown>>> {
   const raw = await readFile(path.join(REPO, "public", "examples", name), "utf8");

@@ -28,6 +28,8 @@
  *     id: "agent_session_...",
  *     max_amount_per_tx: "0.002",
  *     max_total_amount: "0.0025",
+ *     // The wallet that pays. A verifier checks every payment was paid by it.
+ *     payer: "0x...",
  *   });
  *
  * That is the whole format. Publish the file anywhere that serves it over https

@@ -48,6 +48,8 @@ export interface BuildReceiptsInput {
   task: string;
   claim: string;
   generatedAt?: string;
+  /** Where the log lives, relative to the repository. */
+  logPath?: string;
 }
 
 export function buildReceipts(input: BuildReceiptsInput): Receipts {
@@ -57,10 +59,16 @@ export function buildReceipts(input: BuildReceiptsInput): Receipts {
   // The running total. A refused purchase does not move it, which is the whole
   // point of the column.
   let running = 0n;
-  const steps: ReceiptStep[] = records.map((record, index) => {
+  // A note is not an attempt — the agent writes one when a payment fails for a
+  // reason other than the limit, or when money moved that no purchase accounts
+  // for. It stays in the signed log; the steps are the attempts.
+  const attempts = records
+    .map((record, index) => ({ record, index }))
+    .filter(({ record }) => record.decision.kind !== "note");
+  const steps: ReceiptStep[] = attempts.map(({ record, index }) => {
     const decision = record.decision;
     if (decision.kind === "note") {
-      throw new Error(`record ${index} is a note, which a run does not write`);
+      throw new Error(`record ${index} is a note`);
     }
     if (decision.kind === "purchase") {
       running += BigInt(toBaseUnits(decision.price_usd, input.chain.assetDecimals));
@@ -117,7 +125,7 @@ export function buildReceipts(input: BuildReceiptsInput): Receipts {
     seller: input.seller,
     log: {
       algorithm: HASH_ALGORITHM,
-      path: "docs/decision-log.jsonl",
+      path: input.logPath ?? "docs/decision-log.jsonl",
       records: records.length,
       head: records[records.length - 1]?.hash ?? null,
       verified: true,

@@ -9,6 +9,8 @@ export interface LogSession {
   id: string | null;
   max_amount_per_tx: string | null;
   max_total_amount: string | null;
+  /** The wallet that pays. A verifier checks every payment was paid by it. */
+  payer?: string | null;
 }
 
 export interface LogDecision {
