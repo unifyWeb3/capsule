@@ -114,11 +114,13 @@ ${
     .filter((step) => step.outcome === "paid" && step.price_usd === "0.05")
     .map(
       (step) =>
-        `The $${step.price_usd} endpoint that was **refused** above was **paid** here — \`${step.tx_hash ?? ""}\`.`,
+        `The $${step.price_usd} endpoint that was **refused** above was **paid** here — [\`${step.tx_hash ?? ""}\`](${contrast.chain?.explorer ?? "https://basescan.org"}/tx/${step.tx_hash ?? ""}).`,
     )
     .join(" ")
 }
 The refusals were not a broken agent. They were the limit, doing its job.
+
+The same two runs, side by side, at [/runs](https://capsule-phi-blond.vercel.app/runs).
 `
     : ""
 }`;

@@ -99,8 +99,10 @@ The only thing that changed is the number the user signed.
 | Refused | 2 | 0 |
 | Spent | $0.002 | $0.052 |
 
-The $0.05 endpoint that was **refused** above was **paid** here — `0xd769e94012206754dcf5c93921aa1fda87e14910d4246553828866851abfdaf5`.
+The $0.05 endpoint that was **refused** above was **paid** here — [`0xd769e94012206754dcf5c93921aa1fda87e14910d4246553828866851abfdaf5`](https://basescan.org/tx/0xd769e94012206754dcf5c93921aa1fda87e14910d4246553828866851abfdaf5).
 The refusals were not a broken agent. They were the limit, doing its job.
+
+The same two runs, side by side, at [/runs](https://capsule-phi-blond.vercel.app/runs).
 <!-- END:GENERATED -->
 
 ## The three anchors
