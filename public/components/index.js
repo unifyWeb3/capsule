@@ -20,6 +20,6 @@ export { RecordRow, RecordList } from "./record.js";
 export { DataTable } from "./table.js";
 export { Callout, Caveat, Panel, SurfaceCard, SurfaceGrid } from "./blocks.js";
 export { TraceStep, TraceList } from "./trace.js";
-export { Field, RunCard, RunList } from "./form.js";
+export { Field, RunCard, RunList, RunComparison } from "./form.js";
 export { GalleryBlock, GalleryGrid } from "./gallery.js";
 export { CostPanel, SubstitutionList, VerificationPanel } from "./sections.js";

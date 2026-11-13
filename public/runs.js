@@ -3,77 +3,21 @@
  *
  * The A/B is the strongest evidence this project owns, so it gets a screen
  * rather than a table in a README.
+ *
+ * The controller's whole job: fetch the runs, turn them into props, hand the
+ * props to the components, and mount what they return. It knows nothing about
+ * the shape of the payload — `lib/compose.js` does — and it builds no markup
+ * of its own.
  */
 import { fetchRuns } from "./lib/api.js";
-import { DataTable, Panel, RunList, failed, mount } from "./components/index.js";
+import { RunComparison, RunList, failed, mount } from "./components/index.js";
+import { runsProps } from "./lib/compose.js";
 
-function render(runs) {
-  mount(
-    "runs-body",
-    RunList({
-      runs: runs.map((run) => ({
-        id: run.id,
-        label: run.label,
-        summary: `$${run.max_amount_per_tx} per call · $${run.budget_usd} in total · session ${
-          run.session_id ?? "unknown"
-        }`,
-        head: `${(run.log_head ?? "").slice(0, 18)}…`,
-        href: `/run.html?id=${encodeURIComponent(run.id)}`,
-        figures: [
-          { value: String(run.payments), label: "settled" },
-          { value: String(run.refusals), label: "refused" },
-          { value: `$${run.spent_usd}`, label: "spent" },
-          {
-            value: run.budget_multiplier ? `${run.budget_multiplier}×` : "—",
-            label: "cost of limit",
-          },
-        ],
-      })),
-    }),
-  );
-}
-
-function renderCompare(runs) {
-  const [recorded, contrast] = runs;
-  if (!recorded || !contrast) {
-    mount(
-      "compare-body",
-      Panel({
-        head: "Two runs are needed for a comparison",
-        body: '<p class="caveat">Only one run has been recorded.</p>',
-      }),
-    );
-    return;
-  }
-  const rows = [
-    ["Per call", `$${recorded.max_amount_per_tx}`, `$${contrast.max_amount_per_tx}`],
-    ["In total", `$${recorded.budget_usd}`, `$${contrast.budget_usd}`],
-    ["Settled", String(recorded.payments), String(contrast.payments)],
-    ["Refused", String(recorded.refusals), String(contrast.refusals)],
-    ["Spent", `$${recorded.spent_usd}`, `$${contrast.spent_usd}`],
-    [
-      "What the limit cost",
-      `$${recorded.cost_of_the_limit_usd}`,
-      `$${contrast.cost_of_the_limit_usd}`,
-    ],
-  ];
+function render(props) {
+  mount("runs-body", RunList({ runs: props.cards }));
   mount(
     "compare-body",
-    `${Panel({
-      head: "Only the number the user signed changed",
-      note: "two recorded runs",
-      body: DataTable({
-        head: ["", "The recorded run", "The contrast run"],
-        rows,
-        columnClass: (index) => (index === 0 ? "wrap" : ""),
-      }),
-    })}
-     <p class="caveat">
-      The <strong>$0.05</strong> endpoint that the Passport refused under the tight cap was
-      <strong>paid</strong> under the loose one. The refusals were not a broken agent; they
-      were the limit, doing its job. These figures are the record of what happened; each run's
-      own page carries the chain checks, read from the chain.
-    </p>`,
+    RunComparison(props.comparison ?? { rows: [], paidTheSame: null }),
   );
 }
 
@@ -87,8 +31,7 @@ async function load() {
       );
       return;
     }
-    render(data.runs);
-    renderCompare(data.runs);
+    render(runsProps(data));
   } catch (error) {
     mount(
       "runs-body",

@@ -29,6 +29,7 @@ import {
   readerFor,
   verifyStep,
   type Receipts,
+  type ReceiptStep,
 } from "./proof.js";
 import { PUBLIC_DIR, REPO_ROOT } from "./paths.js";
 
@@ -191,6 +192,34 @@ export function describeRun(
       id === "contrast"
         ? "/runs/contrast/decision-log.jsonl"
         : "/decision-log.jsonl",
+    largest_payment: largestPayment(receipts),
+  };
+}
+
+/**
+ * The most expensive purchase this run actually made.
+ *
+ * The A/B is the strongest evidence this project owns, and it is only an
+ * argument until the reader can see the transaction. So the run list carries
+ * the largest payment with its hash: the $0.05 endpoint the tight cap refused
+ * is the same endpoint the loose cap paid, and here is the transaction.
+ */
+export function largestPayment(
+  receipts: Receipts,
+): { price_usd: string; tx_hash: string; url: string; endpoint: string } | null {
+  let largest: ReceiptStep | null = null;
+  for (const step of receipts.steps) {
+    if (step.outcome !== "paid" || !step.tx_hash) continue;
+    if (!largest || Number(step.price_usd) > Number(largest.price_usd)) {
+      largest = step;
+    }
+  }
+  if (!largest?.tx_hash) return null;
+  return {
+    price_usd: largest.price_usd,
+    tx_hash: largest.tx_hash,
+    url: largest.url,
+    endpoint: largest.endpoint,
   };
 }
 

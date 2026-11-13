@@ -61,6 +61,28 @@
  * @property {string[]} [notes]
  */
 
+/**
+ * One run, in the summary shape the runs list uses.
+ *
+ * @typedef {object} RunSummary
+ * @property {string} id
+ * @property {string} label
+ * @property {string|null} session_id
+ * @property {string} max_amount_per_tx
+ * @property {string} max_total_amount
+ * @property {number} payments
+ * @property {number} refusals
+ * @property {string} spent_usd
+ * @property {string} budget_usd
+ * @property {number} cost_of_the_limit_usd
+ * @property {number|null} budget_multiplier
+ * @property {string|null} log_head
+ * @property {number} log_records
+ * @property {{explorer: string}} [chain]
+ * @property {string} log_url
+ * @property {{price_usd: string, tx_hash: string, url: string, endpoint: string}|null} [largest_payment]
+ */
+
 export const OUR_PROOF_URL = "/proof.json";
 
 export class ProofError extends Error {}
@@ -105,7 +127,7 @@ export async function fetchPublishedProof(logUrl) {
 /**
  * The recorded runs.
  *
- * @returns {Promise<{status: string, task?: string, claim?: string, runs: object[]}>}
+ * @returns {Promise<{status: string, task?: string, claim?: string, runs: RunSummary[]}>}
  */
 export async function fetchRuns() {
   const response = await fetch("/runs.json", { headers: { accept: "application/json" } });

@@ -21,6 +21,14 @@ import { chromium } from "playwright-core";
 
 const base = process.argv[2] ?? "https://capsule-phi-blond.vercel.app";
 
+// The third-party path fetches somebody else's log over HTTP *from the server*,
+// and the SSRF guard refuses loopback addresses — which is the correct behaviour,
+// not a bug. So when the audit is pointed at a local server, the two pages that
+// fetch a log cannot work: the server will not fetch itself. They are skipped and
+// said to be skipped, rather than reported red.
+const isLoopback = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(base);
+const SKIPPED_ON_LOOPBACK = new Set(["05-verify-trace", "08-verify-foreign"]);
+
 /** Where the cached Chromium lives, if the default path is not there. */
 function findChromium() {
   if (process.env.PLAYWRIGHT_CHROMIUM) return process.env.PLAYWRIGHT_CHROMIUM;
@@ -96,6 +104,14 @@ const browser = await chromium.launch({
 const findings = [];
 
 for (const [label, path] of PAGES) {
+  if (isLoopback && SKIPPED_ON_LOOPBACK.has(label)) {
+    for (const size of VIEWPORTS.map(([size]) => size)) {
+      console.log(
+        `${label.padEnd(20)} ${size.padEnd(7)} SKIP: the server refuses to fetch a loopback log URL (SSRF guard)`,
+      );
+    }
+    continue;
+  }
   for (const [size, viewport] of VIEWPORTS) {
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();

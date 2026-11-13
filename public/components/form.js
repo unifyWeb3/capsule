@@ -4,6 +4,8 @@
  * The log URL field, and the cards that list the recorded runs.
  */
 import { html, raw } from "./dom.js";
+import { Panel } from "./blocks.js";
+import { DataTable } from "./table.js";
 
 /**
  * A single field with a button.
@@ -88,4 +90,55 @@ export function RunList(props) {
   return html`<div class="runlist">
     ${props.runs.map((run) => html`${raw(RunCard(run))}`)}
   </div>`;
+}
+
+/**
+ * The A/B.
+ *
+ * Two runs, side by side, and the one transaction that settles the argument:
+ * the endpoint the tight cap refused is the endpoint the loose cap paid, and
+ * here is the hash on Base. Without it, "the same endpoint was paid" is a
+ * sentence; with it, it is a link.
+ *
+ * @param {{
+ *   rows: Array<Array<string>>,
+ *   paidTheSame: {price: string, tx: string, explorer: string, endpoint: string} | null,
+ * }} props
+ * @returns {string}
+ */
+export function RunComparison(props) {
+  if (!props.rows.length) {
+    return Panel({
+      head: "Two runs are needed for a comparison",
+      body: html`<p class="caveat">Only one run has been recorded.</p>`,
+    });
+  }
+
+  const table = Panel({
+    head: "Only the number the user signed changed",
+    note: "two recorded runs",
+    body: DataTable({
+      head: ["", "The recorded run", "The contrast run"],
+      rows: props.rows,
+      columnClass: (index) => (index === 0 ? "wrap" : ""),
+    }),
+  });
+
+  const payment = props.paidTheSame
+    ? html`<div class="hashline">
+        The <strong>${props.paidTheSame.price}</strong> endpoint that was <b>refused</b> above
+        was <b>paid</b> here —
+        <a href="${props.paidTheSame.explorer}/tx/${props.paidTheSame.tx}" target="_blank" rel="noreferrer">
+          tx ${props.paidTheSame.tx.slice(0, 12)}…
+        </a>
+      </div>`
+    : "";
+
+  return html`${raw(table)}
+    ${raw(payment)}
+    <p class="caveat">
+      The refusals were not a broken agent; they were the limit, doing its job. These
+      figures are the record of what happened; each run's own page carries the chain
+      checks, read from the chain.
+    </p>`;
 }

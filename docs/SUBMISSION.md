@@ -136,6 +136,23 @@ Refusals decided by your Kite Passport session, not by the agent.
 >
 > #BuildOnSERV #Kite #x402
 
+## The 90-second video — three beats, shot list
+
+Record this **after** the UI fix, which is deployed. Nothing below needs a key, an
+account, or a setup.
+
+| Time | The screen | What you say | What the camera shows |
+| --- | --- | --- | --- |
+| 0:00–0:12 | `https://capsule-phi-blond.vercel.app` | *"This is what a spending limit cost. $0.051 of evidence against a $0.0025 budget — 20.4 times the whole budget."* | The headline card. The number, not the interface. |
+| 0:12–0:35 | the same page, scrolled to the record | *"Four attempts. Two settled on chain. Two were refused — and this is the one that matters: a $0.05 endpoint, over a $0.002 cap. The Passport refused it, not the agent."* | The record list, the two refusal rows, the `session_rule_exceeded` code. |
+| 0:35–0:55 | `https://capsule-phi-blond.vercel.app/runs` | *"That is a claim, so we measured it. The same task, the same agent, one number changed. Under the loose cap the same $0.05 endpoint was paid. One variable, different outcome."* | The two run cards side by side, then the comparison table, then click the **transaction link** in the last line — the $0.05 payment, on Base. |
+| 0:55–1:15 | `https://capsule-phi-blond.vercel.app/verify?log=https://capsule-phi-blond.vercel.app/decision-log.jsonl` | *"And this is not our record. Hand it any agent's published log and it fetches it, checks the hash chain, reads every payment off the chain, and shows the check happening."* | The trace, step by step. The chain read visible. |
+| 1:15–1:30 | back to the landing page | *"The payment is a transaction. The refusal is not — and nobody else records what an agent was refused. That is the product. Capsule. Repo in the description."* | The record, the asymmetry callout, the repo URL on screen |
+
+**Before you press record:** open all four URLs in tabs and confirm each one loads
+with the numbers in the table above. If a number on screen is not the number above,
+stop and fix it — a video with a stale number is worse than no video.
+
 ## Before you post
 
 - [ ] Tag **@openservai** in both posts.
@@ -144,18 +161,32 @@ Refusals decided by your Kite Passport session, not by the agent.
 
 ## Still open
 
-- The demo video. The form accepts a demo link and the live app is one, but a 90-second
-  video is the cheapest remaining lever on the judging.
+- The demo video — the shot list above. The form accepts a demo link and the live app
+  is one, but a 90-second video is the cheapest remaining lever on the judging.
+- The stranger test: give somebody the `/verify` URL and watch them use it without help.
+  Nobody has done this but us, and it is the one thing that would prove "user
+  readiness" instead of asserting it.
 - Fields 14, 16, 17, 20, 21 — the user's call.
 - The submission itself. **Do not submit on the strength of the artifact alone** — the
   submission is an authorized action and the last step.
 
 ## Done since the last version of this pack
 
-- The contrast run: the same task under a $0.10 budget, showing the agent completing the
-  $0.05 purchase it was refused before. It is on `/runs` and in the receipts.
+- The contrast run: the same task under a $0.10 budget, showing the agent completing
+  the $0.05 purchase it was refused before. It is on `/runs` and in the receipts.
 - The third-party path: `GET /verify?log=<url>` verifies **anyone's** published record,
   and `/verify` shows the check happening step by step.
 - The log now carries the session inside the hash chain, so the budget a third party
   reads is covered by the signature, not just asserted. See `docs/PROVENANCE.md`.
 - The security-model page: what Capsule does **not** prove, in our own words.
+- **A foreign log format is now verified end to end** — `/examples/foreign-log.jsonl`
+  goes through the same reader, so "any agent's record" is demonstrated rather than
+  claimed.
+- The front end is a component library with a gallery at `/components`, and every page
+  is audited in a real browser on every push: no console errors, no overflow at 390px,
+  contrast ≥ 4.5:1, and every page renders what it is supposed to render.
+- The A/B screen now carries the transaction that settles the argument: the $0.05
+  endpoint the tight cap refused is the one the loose cap paid, and `/runs` links the
+  exact payment on Base.
+- `/proof.json` now carries `checked_at` — when the chain was read — and is never
+  served from a cache, so refreshing it always re-reads the chain.

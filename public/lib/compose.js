@@ -276,3 +276,73 @@ export function traceProps(proof) {
     })),
   };
 }
+
+/**
+ * The runs.
+ *
+ * The A/B is the strongest evidence this project owns, so the payload gets
+ * turned into props here and nowhere else: the cards, the comparison, and the
+ * one transaction that settles the argument.
+ *
+ * @param {{runs?: object[]}} data
+ */
+export function runsProps(data) {
+  const runs = data.runs ?? [];
+  return {
+    cards: runs.map((run) => ({
+      id: run.id,
+      label: run.label,
+      summary:
+        `$${run.max_amount_per_tx} per call · $${run.budget_usd} in total · session ` +
+        `${run.session_id ?? "unknown"}`,
+      head: `${(run.log_head ?? "").slice(0, 18)}…`,
+      href: `/run.html?id=${encodeURIComponent(run.id)}`,
+      figures: [
+        { value: String(run.payments), label: "settled" },
+        { value: String(run.refusals), label: "refused" },
+        { value: `$${run.spent_usd}`, label: "spent" },
+        {
+          value: run.budget_multiplier ? `${run.budget_multiplier}×` : "—",
+          label: "cost of limit",
+        },
+      ],
+    })),
+    comparison: comparisonProps(runs[0], runs[1]),
+  };
+}
+
+/**
+ * Two runs, side by side.
+ *
+ * The last row of the table is not a number: it is the transaction. "The same
+ * endpoint was paid" is an argument until the reader can click it.
+ *
+ * @param {object|undefined} recorded
+ * @param {object|undefined} contrast
+ */
+function comparisonProps(recorded, contrast) {
+  if (!recorded || !contrast) return null;
+  const payment = contrast.largest_payment ?? null;
+  return {
+    rows: [
+      ["Per call", `$${recorded.max_amount_per_tx}`, `$${contrast.max_amount_per_tx}`],
+      ["In total", `$${recorded.budget_usd}`, `$${contrast.budget_usd}`],
+      ["Settled", String(recorded.payments), String(contrast.payments)],
+      ["Refused", String(recorded.refusals), String(contrast.refusals)],
+      ["Spent", `$${recorded.spent_usd}`, `$${contrast.spent_usd}`],
+      [
+        "What the limit cost",
+        `$${recorded.cost_of_the_limit_usd}`,
+        `$${contrast.cost_of_the_limit_usd}`,
+      ],
+    ],
+    paidTheSame: payment
+      ? {
+          price: `$${payment.price_usd}`,
+          tx: payment.tx_hash,
+          explorer: contrast.chain?.explorer ?? "",
+          endpoint: payment.endpoint,
+        }
+      : null,
+  };
+}
