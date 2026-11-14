@@ -6,13 +6,13 @@
     }
   },
   "redirects": [
-    { "source": "/index.html", "destination": "/", "status": 301 },
-    { "source": "/runs.html", "destination": "/runs", "status": 301 },
-    { "source": "/run.html", "destination": "/run", "status": 301 },
-    { "source": "/replay.html", "destination": "/replay", "status": 301 },
-    { "source": "/verify.html", "destination": "/verify", "status": 301 },
-    { "source": "/components.html", "destination": "/components", "status": 301 },
-    { "source": "/docs/format.html", "destination": "/docs/format", "status": 301 },
-    { "source": "/docs/security-model.html", "destination": "/docs/security-model", "status": 301 }
+    { "source": "/index.html", "destination": "/", "statusCode": 301 },
+    { "source": "/runs.html", "destination": "/runs", "statusCode": 301 },
+    { "source": "/run.html", "destination": "/run", "statusCode": 301 },
+    { "source": "/replay.html", "destination": "/replay", "statusCode": 301 },
+    { "source": "/verify.html", "destination": "/verify", "statusCode": 301 },
+    { "source": "/components.html", "destination": "/components", "statusCode": 301 },
+    { "source": "/docs/format.html", "destination": "/docs/format", "statusCode": 301 },
+    { "source": "/docs/security-model.html", "destination": "/docs/security-model", "statusCode": 301 }
   ]
 }
