@@ -130,7 +130,7 @@ Use the second. It costs **$0.30 of USDC.e**, and the run spends $0.25 of it.
 ## E. The X post
 
 Posting is required and the post must tag **@openservai**. The exact post is in
-`docs/SUBMISSION.md`: one post of 264 characters, which fits X's limit. You publish
+`docs/SUBMISSION.md`: one post of 265 characters, which fits X's limit. You publish
 it and send me the URL. The form needs the URL as a required field, and it takes one
 URL, so one post is enough.
 
