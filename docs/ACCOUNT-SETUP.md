@@ -129,9 +129,116 @@ Use the second. It costs **$0.30 of USDC.e**, and the run spends $0.25 of it.
 
 ## E. The X post
 
-Posting is required and the post must tag **@openservai**. I will draft the text and
-give you the exact post; you publish it and send me the URL. The form needs the URL as
-a required field.
+Posting is required and the post must tag **@openservai**. The exact post is in
+`docs/SUBMISSION.md`: one post of 264 characters, which fits X's limit. You publish
+it and send me the URL. The form needs the URL as a required field, and it takes one
+URL, so one post is enough.
+
+## F. The account KYC: Kite is reviewing it
+
+Status, checked 2026-11-14:
+
+```bash
+kpass onboarding status --output json
+```
+
+```json
+{ "onboarding_status": "pending", "type": "kyc", "country": "NG",
+  "legal_name": "Akolade Abraham Fatoki",
+  "submitted_at": "2026-11-11T18:53:07.397463Z", "reason": "" }
+```
+
+**What this means.** The record was submitted and Kite is reviewing it. There is
+nothing for you to do while it sits pending: the controller identifier is claimed
+(`ind-akoladefatoki108`), the agent is registered, and the spending session works, so
+this does not block the demo or the submission. The `reason` field is empty, which is
+what a pending record looks like, not a rejection.
+
+**If Kite rejects it or asks for more.** Resubmit with:
+
+```bash
+kpass onboarding submit --country NG --legal-name "Akolade Abraham Fatoki" --type kyc
+```
+
+It needs the claimed controller identifier first (`kpass identifier claim`, already
+done). A pending or rejected record is overwritten and moves back to pending. A
+**verified** record is immutable: once it is approved it cannot be changed, so check
+the name and the country before sending it.
+
+**Where to look.** `kpass onboarding status --output json` is the only place the
+status lives. If Kite emails you, answer that email; it is the same channel that
+carries the passport setup and the ticket below.
+
+## G. The allowlist: making our own merchant payable
+
+**What it is.** When a buyer agent pays an x402 merchant, the facilitator checks the
+merchant's host and its receiving address against the Passport's allowlist. Ours was
+not on it, so our own merchant could be priced but not paid.
+
+**Where it stands.** The catalog record for our host says it was *"Added via
+GOK-557 (host_not_allowlisted review)"*. **A review in progress, not a rejection.**
+The ticket sits with Kite.
+
+**What it costs us.** The 402 challenge is verified: three consecutive challenges
+answered live, priced at $0.001. But **settlement has never executed**, because
+every settlement attempt has been refused at the allowlist. So the claim "the
+verifier is an x402 merchant" is priced, not proven, and the README says exactly that
+rather than claiming more.
+
+**The one message.** This is your step. Send it to the Kite support channel that
+carries GOK-557, the same one you used for the passport setup; the partner docs are
+at <https://docs.gokite.ai/passport>.
+
+Subject: `GOK-557, allowlist request for the Capsule verifier host`
+
+```text
+Hello, this is about ticket GOK-557 (host_not_allowlisted review) for the Capsule verifier.
+
+Host: https://capsule-phi-blond.vercel.app
+Receiving address: 0xCfca130E445A5178d621aAd38E51D049855911c2
+Agent DID: did:kite:ind-akoladefatoki108:capsule-agent
+Agent id: agent_01a1cbf8-be0f-70af-88a8-d82d7c85564c
+
+The host serves one thing: an x402-paid verification endpoint (POST /api/verify,
+$0.001 per call) that returns a machine-readable proof of an agent's spending
+record. Payments would settle USDC on Base mainnet (eip155:8453) to the address
+above, under a Kite Passport session cap that the buyer approves with a passkey.
+
+The 402 challenge is already live and verified. Only the allowlist decision is
+outstanding, so a buyer agent can settle against it.
+
+Could you let me know the status of GOK-557, and what else you need from me?
+
+Thank you.
+```
+
+Ask for two things: the status of GOK-557, and what, if anything, Kite still needs
+from us.
+
+**When it clears.** One paid call. The session that already exists covers it: its
+per-transaction cap is $0.06 and its total cap is $0.10, and $0.001 fits in what is
+left of the $0.052 already spent.
+
+```bash
+kpass session execute \
+  --url https://capsule-phi-blond.vercel.app/api/verify \
+  --method POST \
+  --headers '{"content-type":"application/json"}' \
+  --body '{"log_url":"https://capsule-phi-blond.vercel.app/decision-log.jsonl"}' \
+  --idempotency-key capsule-self-verify-1 \
+  --session-id agent_session_01a1cf1e-a8ff-7366-b287-1210fec6ad6e \
+  --output json
+```
+
+After that the settlement has a transaction hash of its own, the proof carries our
+own payment as chain-verified, and the README's honest-limits line changes from "our
+own service could not be paid" to the fact that it was. That is the difference
+between a priced claim and a proven one.
+
+**If it does not clear before the deadline.** Nothing breaks. The site, the npm tool
+and the write-up are honest about it, and the README already says the host is not
+allowlisted. The review is the one thing on this list that no amount of our work
+can hurry.
 
 ---
 
