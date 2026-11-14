@@ -185,7 +185,7 @@ async function main() {
   const failed = results.filter((check) => !check.ok);
   console.log(
     `\n${results.length - failed.length}/${results.length} checks passed` +
-      (failed.length ? ` — ${failed.length} failed` : " — verification OK"),
+      (failed.length ? `, ${failed.length} failed` : ", verification OK"),
   );
   process.exit(failed.length ? 1 : 0);
 }

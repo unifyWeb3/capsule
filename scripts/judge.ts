@@ -25,12 +25,12 @@ function run(command: string, args: string[]): Promise<{ code: number; out: stri
 }
 
 async function main() {
-  console.log("CAPSULE — what a judge needs\n");
+  console.log("CAPSULE: what a judge needs\n");
 
   const tests = await run("node", ["--import", "tsx", "--test", "test/*.test.ts"]);
   const testCount = /pass (\d+)/.exec(tests.out)?.[1] ?? "?";
   console.log(`1. tests            ${testCount} passed (no network, no keys, no money)`);
-  if (tests.code !== 0) console.log("   FAILED — see above");
+  if (tests.code !== 0) console.log("   FAILED, see above");
 
   const receipts = JSON.parse(
     await readFile(path.join(REPO_ROOT, "docs", "receipts.json"), "utf8"),

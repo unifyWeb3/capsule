@@ -1,4 +1,4 @@
-# Capsule — architecture, and the minimal production version
+# Capsule: architecture, and the minimal production version
 
 **2026-11-13. Written for the SERV Hackathon 02 team.**
 
@@ -9,7 +9,7 @@ Every claim about the current code cites a file and a line. Every number is labe
 
 This document proposes **no framework rewrite**. The stack stays TypeScript + Express +
 x402 + plain-JS front end. It proposes **one new runtime dependency** (`pg`), **one new
-subsystem** (the hosted-record tier), **one cache**, and **two bug fixes** — one of which
+subsystem** (the hosted-record tier), **one cache**, and **two bug fixes**, one of which
 is a measured defect in the current chain reader.
 
 **Contents**
@@ -17,50 +17,50 @@ is a measured defect in the current chain reader.
 | § | | § | |
 | --- | --- | --- | --- |
 | 0 | What "scalable" means for this product | 6 | Caching strategy |
-| 1 | Architecture — diagram, boundaries, invariants | 7 | Implementation code |
-| 2 | Component structure — the minimal delta | 8 | The minimal production version |
-| 3 | Data flow — two journeys | 9 | The three decisions that matter |
-| 4 | API design — every endpoint, the x402 path | 10 | What we would not build |
-| 5 | Database schema — and what stays outside it | 11 | What I could not verify |
+| 1 | Architecture: diagram, boundaries, invariants | 7 | Implementation code |
+| 2 | Component structure: the minimal delta | 8 | The minimal production version |
+| 3 | Data flow: two journeys | 9 | The three decisions that matter |
+| 4 | API design: every endpoint, the x402 path | 10 | What we would not build |
+| 5 | Database schema: and what stays outside it | 11 | What I could not verify |
 
 ---
 
 ## 0.5 What is built and what is only designed
 
 This document was written as a design. Two days later, a lot of it is code. This
-is the honest ledger — what runs today, what is a plan, and what was deliberately
+is the honest ledger: what runs today, what is a plan, and what was deliberately
 left alone.
 
 | # | Item | § | Status |
 | --- | --- | --- | --- |
-| 1 | The chain reader: a head with a life, mined receipts kept, in-flight reads shared, the head pre-warmed | §6.4, §7.2 | **BUILT** — `src/proof.ts`, 5 tests in `test/chain-reader.test.ts` |
-| 2 | The cache window: 30 seconds, no `stale-while-revalidate`, and the answer says when the chain was read | §6.2 | **BUILT** — `src/app.ts`, `checked_at` in the proof |
-| 3 | The front-end component structure: props → markup, a payload → props layer, and a gallery that documents the library by rendering it | §2 | **BUILT** — `public/components/`, `public/lib/compose.js`, `/components` |
-| 4 | `src/paths.ts` — the path constants out of the proof module | §2.1 | **BUILT** — `src/paths.ts`, 28 lines |
-| 5 | The configurable RPC (`BASE_RPC_URL`) | §6.5 | **BUILT** — `src/chains.ts` |
-| 6 | `src/cache.ts` — a `VerdictStore` keyed by (tx, chain, amount, sender), with a Postgres implementation | §7.1 | **DESIGNED, NOT BUILT** — see the note below |
-| 7 | `src/store.ts` — `RecordStore`, file | Postgres | §7.4 | **DESIGNED, NOT BUILT** |
-| 8 | `src/host.ts` — `POST /api/records`, `GET /r/:slug` | §7.5 | **DESIGNED, NOT BUILT** |
-| 9 | The Postgres schema and `scripts/migrate.ts` | §5 | **DESIGNED, NOT BUILT** — it has not been applied to a live database |
-| 10 | The token-bucket rate limit on `/verify` | §7.5 | **BUILT** — `src/rate-limit.ts`; 30/min/IP, 6/min/log URL, 20 in flight, 429 + `Retry-After` |
-| 11 | `POST /api/verify` — the verifier as an x402 merchant, $0.001 | §4.5 | **BUILT** — `src/app.ts` `paidRoutes` + handler; 402 challenge verified; settlement untested in production (never paid yet) |
-| 12 | `mcp/server.ts` — the verifier as an MCP tool (`verify_record`, `get_proof`) | §4 | **BUILT** — stdio MCP, zero custody; integration-tested against the live record |
+| 1 | The chain reader: a head with a life, mined receipts kept, in-flight reads shared, the head pre-warmed | §6.4, §7.2 | **BUILT**: `src/proof.ts`, 5 tests in `test/chain-reader.test.ts` |
+| 2 | The cache window: 30 seconds, no `stale-while-revalidate`, and the answer says when the chain was read | §6.2 | **BUILT**: `src/app.ts`, `checked_at` in the proof |
+| 3 | The front-end component structure: props → markup, a payload → props layer, and a gallery that documents the library by rendering it | §2 | **BUILT**: `public/components/`, `public/lib/compose.js`, `/components` |
+| 4 | `src/paths.ts`: the path constants out of the proof module | §2.1 | **BUILT**: `src/paths.ts`, 28 lines |
+| 5 | The configurable RPC (`BASE_RPC_URL`) | §6.5 | **BUILT**: `src/chains.ts` |
+| 6 | `src/cache.ts`: a `VerdictStore` keyed by (tx, chain, amount, sender), with a Postgres implementation | §7.1 | **DESIGNED, NOT BUILT**: see the note below |
+| 7 | `src/store.ts`: `RecordStore`, file | Postgres | §7.4 | **DESIGNED, NOT BUILT** |
+| 8 | `src/host.ts`: `POST /api/records`, `GET /r/:slug` | §7.5 | **DESIGNED, NOT BUILT** |
+| 9 | The Postgres schema and `scripts/migrate.ts` | §5 | **DESIGNED, NOT BUILT**: it has not been applied to a live database |
+| 10 | The token-bucket rate limit on `/verify` | §7.5 | **BUILT**: `src/rate-limit.ts`; 30/min/IP, 6/min/log URL, 20 in flight, 429 + `Retry-After` |
+| 11 | `POST /api/verify`: the verifier as an x402 merchant, $0.001 | §4.5 | **BUILT**: `src/app.ts` `paidRoutes` + handler; 402 challenge verified; settlement untested in production (never paid yet) |
+| 12 | `mcp/server.ts`: the verifier as an MCP tool (`verify_record`, `get_proof`) | §4 | **BUILT**: stdio MCP, zero custody; integration-tested against the live record |
 
 **Why items 6–10 are not built.** They are the hosted-record tier, and the hosted
-tier has no customer. `docs/BRIEF.md` records the payment evidence as "level 5 — our
-own belief", and §8.4 of this document says the same thing: build the caching
+tier has no customer. `docs/BRIEF.md` records the payment evidence as level 5, our
+own belief, and §8.4 of this document says the same thing: build the caching
 first, and build the database only when somebody wants their record hosted. Items
 1–5 are that "first", and they are done. Items 6–10 are the second half, and the
 second half is worth nothing until the first half has a buyer.
 
 The one deliberate divergence from this document: §6.6 proposes caching
 `/proof.json` at the edge so it stops missing. **It was not done**, and
-`docs/OPTIMIZATION.md` §2.4 says why — a judge who clicks refresh expects the
+`docs/OPTIMIZATION.md` §2.4 says why: a judge who clicks refresh expects the
 chain to be read again, and a cached confirmation count reads as a broken product.
 The landing page's proof is the one route that is never served from a cache.
 
-**On line references.** They are to `142a032`. The code has moved since — four
-commits, and `src/proof.ts` grew by 124 lines — so a line number may be off. The
+**On line references.** They are to `142a032`. The code has moved since: four
+commits, and `src/proof.ts` grew by 124 lines, so a line number may be off. The
 *file* a reference points at is correct.
 
 ---
@@ -70,7 +70,7 @@ commits, and `src/proof.ts` grew by 124 lines — so a line number may be off. T
 
 Capsule is two products that share one kernel, and they scale in opposite directions.
 
-| | **Plane A — the owner's record** | **Plane B — the third-party proof** |
+| | **Plane A: the owner's record** | **Plane B: the third-party proof** |
 | --- | --- | --- |
 | Who runs it | us, once per agent task | anybody, at any rate |
 | Volume | dozens of runs | unbounded |
@@ -158,7 +158,7 @@ that. So the database schema in §5 stores them with the same labels they carry 
 ### 1.2 The two planes, drawn as flows
 
 ```
-  PLANE A — one task, end to end            PLANE B — a stranger's log, at volume
+  PLANE A: one task, end to end            PLANE B: a stranger's log, at volume
   ──────────────────────────────             ────────────────────────────────
 
   model decision                             GET /verify?log=https://…
@@ -196,7 +196,7 @@ refusal list priced from the log.**
 | B3 | **The money** | `src/kpass.ts` (276 lines, shells out to `kpass`) | **Invariant: exactly one module in this repository can cause money to move, and it can only ask the Passport.** Nothing in `src/app.ts`, `src/agent.ts` or `src/verify-log.ts` can spend. The cap is enforced in Kite's backend, not in the code that wants to spend (`README.md:221-233`). |
 | B4 | **Hostile input** | `src/normalize.ts:113` | Everything a stranger sends stops here and becomes a `CanonicalDecision` with explicit `null`s. The reader "never guesses a value" (`src/normalize.ts:11-12`). |
 | B5 | **The fetch** | `src/net.ts:97` `resolvePublic()` | The one place in the project where the input is hostile *at the network level*: https only, no credentials, every resolved address public, the socket pinned to the checked address, redirects re-checked, size and time capped. |
-| B6 | **Where a record lives** | `src/store.ts` (NEW) | The product genuinely has two modes — *you publish it* and *we host it* — and one interface serves both. This is the only new interface, and §9 explains why it is the only one. |
+| B6 | **Where a record lives** | `src/store.ts` (NEW) | The product genuinely has two modes, *you publish it* and *we host it*, and one interface serves both. This is the only new interface, and §9 explains why it is the only one. |
 | B7 | **The payload shape** | `public/lib/api.js` | The page never touches the shape of a proof payload; it asks `api.js` for one. Same rule as `src/proof.ts`'s `Receipts` type: one definition, many consumers. |
 
 ### 1.4 The two invariants that must not break
@@ -227,7 +227,7 @@ Sizes are `wc -l` on 2026-11-13 at commit `142a032`.
 | `src/proof.ts` | 377 | **the `Receipts` shape**, the RPC client, `readReceipts()` | `units`, `chains` |
 | `src/normalize.ts` | 343 | any log shape → one canonical decision | `log` *(types only)* |
 | `src/log.ts` | 312 | the hash chain: append, rewrite, verify, substitutions | `viem` |
-| `src/kpass.ts` | 276 | the `kpass` CLI wrapper — the money path | `node:child_process` |
+| `src/kpass.ts` | 276 | the `kpass` CLI wrapper, the money path | `node:child_process` |
 | `src/net.ts` | 246 | the https-only, DNS-pinned fetcher | `node:dns`, `node:https` |
 | `src/catalog.ts` | 220 | Scout's own data endpoints | `node:https` |
 | `src/attest.ts` | 194 | Kite's published key set; signing the log head | `viem`, `node:fs` |
@@ -245,26 +245,26 @@ Sizes are `wc -l` on 2026-11-13 at commit `142a032`.
 modules in `src/` import from it** (`app.ts:25`, `records.ts:12`, `artifact.ts:12`,
 `menu.ts:17`, `verify-log.ts:15`, `agent.ts:18`), and it holds three unrelated things:
 
-- the **`Receipts` type** — the API contract, consumed by `app.ts`, `records.ts`, `agent.ts`,
+- the **`Receipts` type**, the API contract, consumed by `app.ts`, `records.ts`, `agent.ts`,
   `artifact.ts` and 9 scripts;
-- the **RPC client** — `rpc()` at `src/proof.ts:203` and `ChainReader` at `src/proof.ts:223`;
-- **filesystem access** — `readReceipts()` at `src/proof.ts:182` and the `REPO_ROOT`
+- the **RPC client**, `rpc()` at `src/proof.ts:203` and `ChainReader` at `src/proof.ts:223`;
+- **filesystem access**, `readReceipts()` at `src/proof.ts:182` and the `REPO_ROOT`
   constant at `src/proof.ts:17`.
 
 The consequence is visible: `src/menu.ts:17` has to import `REPO_ROOT` from the *proof
 module* just to find `docs/menu.json` on disk. A domain module depending on an I/O module
 for a path constant is the kind of thing that turns into a cycle the day someone moves a
-file. **The fix is not a restructure — it is moving one constant.** `REPO_ROOT` belongs in
+file. **The fix is not a restructure: it is moving one constant.** `REPO_ROOT` belongs in
 a two-line `src/paths.ts`; `src/proof.ts:17` then stops being a hub for the 9 scripts that
 only want a path, and `src/menu.ts:17` imports from a module that has no I/O beyond `path`.
 
-> **DONE — `src/paths.ts` exists.** `REPO_ROOT`, `RECEIPTS_PATH`, `MENU_PATH` and
+> **DONE: `src/paths.ts` exists.** `REPO_ROOT`, `RECEIPTS_PATH`, `MENU_PATH` and
 > `PUBLIC_DIR` live there now, 28 lines, importing nothing but `node:path`. All thirteen
 > importers were moved; `src/menu.ts` no longer imports the proof module at all, and
 > `src/proof.ts` is no longer a hub for a path constant. The `Receipts` type and the RPC
 > client stayed where they were, deliberately: they are the proof module's actual job.
 
-### 2.2 The target layout — the minimal delta
+### 2.2 The target layout: the minimal delta
 
 ```
 src/
@@ -303,7 +303,7 @@ changed functions.** Total new code ≈ 700 lines of TypeScript + ~180 lines of 
 That restructure was proposed, cost 4 hours, and was cut by the team for a correct reason
 (`docs/ENGINEERING-REVIEW.md:193-200`): `src/verify-log.ts` already reuses `ChainReader`
 and `verifyStep` from `src/proof.ts`, so the duplication it removes is about forty lines,
-and the outcome a third party actually experiences is a writer they can use — which the
+and the outcome a third party actually experiences is a writer they can use, which the
 published format delivers at a third of the cost. The lesson generalises: **the public
 interface of this product is the log format and the HTTP API, not the directory layout.**
 §10 lists the rest of what we would not build.
@@ -316,23 +316,23 @@ interface of this product is the log format and the HTTP API, not the directory 
 | `src/cache.ts` | `pg` (types only), `src/chains.ts` | `src/proof.ts`, `src/app.ts`, `src/verify-log.ts` | A cache must not know what it is caching. It stores a `Verdict` keyed by a hash, not a `ReceiptStep`. |
 | `src/store.ts` | `pg`, `node:fs`, `src/paths.ts`, `src/log.ts` *(types)*, `src/proof.ts` *(the `Receipts` type)* | `src/app.ts`, `src/agent.ts` | The store is the boundary between "a record exists" and "where it lives". It knows nothing about HTTP. |
 | `src/host.ts` | `src/app.ts`'s router, `src/store.ts`, `src/cache.ts`, `src/verify-log.ts`, `src/proof.ts` | `src/kpass.ts`, `src/agent.ts` | The hosted tier **verifies**; it never **spends**. It must not be able to move money. |
-| `src/app.ts` | everything above | — | The composition root. The only module allowed to know about all the others. |
+| `src/app.ts` | everything above | n/a | The composition root. The only module allowed to know about all the others. |
 
 ### 2.4 The front end, which has the same rule
 
 The back end has one composition root. The front end now has the same shape, and
 the same rule, because the pages had the same problem: each one built markup
-inline and knew the shape of a proof payload, so the record was drawn twice —
-once for our own log and once for a third party's — and the two copies had
+inline and knew the shape of a proof payload, so the record was drawn twice:
+once for our own log and once for a third party's, and the two copies had
 already drifted.
 
 | Layer | May depend on | Must not depend on | Why |
 | --- | --- | --- | --- |
 | `public/components/*.js` | `public/components/dom.js` only | any payload shape, any endpoint | A component takes props and returns markup. It does not fetch and it does not know what a proof is. |
 | `public/lib/compose.js` | `public/lib/format.js` | `public/components/*` | This is the only file that knows a proof payload. It turns one into props. |
-| `public/lib/api.js` | — | `public/components/*` | This is the only file that knows an endpoint. |
-| `public/lib/format.js` | — | everything | Pure functions: money, host, path, plain error, age. Testable without rendering. |
-| `public/<page>.js` | all of the above | — | The controller: fetch → compose → mount. It builds no markup. |
+| `public/lib/api.js` | n/a | `public/components/*` | This is the only file that knows an endpoint. |
+| `public/lib/format.js` | n/a | everything | Pure functions: money, host, path, plain error, age. Testable without rendering. |
+| `public/<page>.js` | all of the above | n/a | The controller: fetch → compose → mount. It builds no markup. |
 
 The rule that makes it hold together is **escaping at the point of interpolation**:
 `html`` ` in `public/components/dom.js` escapes every value by default, so a
@@ -341,14 +341,14 @@ explicitly with `raw()`.
 
 `/components` is the library's own documentation: it renders every component with
 its real props, so the usage examples cannot drift from the code the way prose
-examples do. It is the same trick as the log format — **the documentation is
+examples do. It is the same trick as the log format: **the documentation is
 executed, not described.**
 
 ---
 
 ## 3. Data flow
 
-### 3.1 Journey A — a run that spends money, to a signed published verifiable record
+### 3.1 Journey A: a run that spends money, to a signed published verifiable record
 
 ```
  1  npm run demo                                       scripts/run-demo.ts:30
@@ -441,7 +441,7 @@ executed, not described.**
          (the key the Passport binds to the DID)
 
  6  writeFile docs/receipts.json                        scripts/run-demo.ts:96
-    (and docs/decision-log.json, the JSON mirror the deployment imports —
+    (and docs/decision-log.json, the JSON mirror the deployment imports,
      scripts/rebuild-receipts.ts:125)
 
  7  npm run receipts                                    scripts/rebuild-receipts.ts:24
@@ -461,13 +461,13 @@ executed, not described.**
 **Journey A in one line:** *the model proposes, the Passport disposes, the log remembers,
 the receipts are derived, the head is signed, the chain confirms the money.*
 
-### 3.2 Journey B — a third party hands over a log URL and gets a proof back
+### 3.2 Journey B: a third party hands over a log URL and gets a proof back
 
 ```
  1  GET /verify?log=https://wherever/the/log.jsonl
       no `format=json` -> the interactive page, served at /verify  src/app.ts
       (the interactive trace, so a reader watches the check happen rather than
-       reading a JSON blob — docs/ENGINEERING-REVIEW.md:188)
+       reading a JSON blob; see docs/ENGINEERING-REVIEW.md:188)
 
  2  verifyPublishedLog(logUrl, {budgetUsd})             src/verify-log.ts:166
 
@@ -534,11 +534,11 @@ which half is the owner's word.*
 
 ### 4.1 The full surface
 
-**Public, unauthenticated, edge-cacheable — the record.**
+**Public, unauthenticated, edge-cacheable: the record.**
 
 | Method | Path | Request | Response | Status | Cache |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/proof.json` | none | the `Receipts` payload + `chain_checks` re-read at request time | 200 / 200 `{"status":"no_run_recorded"}` | `public, max-age=5, stale-while-revalidate=30` **(new — see §7.4)** |
+| GET | `/proof.json` | none | the `Receipts` payload + `chain_checks` re-read at request time | 200 / 200 `{"status":"no_run_recorded"}` | `public, max-age=5, stale-while-revalidate=30` **(new: see §7.4)** |
 | GET | `/runs.json` | none | `{status, task, claim, runs:[…]}` | 200 / 200 `{status:"no_run_recorded", runs:[]}` | `public, max-age=30` |
 | GET | `/runs/:id.json` | `id` ∈ {`recorded`,`contrast`} | the same payload, `run_id` set | 200 / 404 `no_such_run` | `public, max-age=5, stale-while-revalidate=30` |
 | GET | `/decision-log.jsonl` | none | the published log, one JSON object per line | 200 / 404 `no_log` | `public, max-age=60` |
@@ -546,26 +546,26 @@ which half is the owner's word.*
 | GET | `/examples/foreign-log.jsonl` | none | the worked example in another schema | 200 | `public, max-age=3600` |
 | GET | `/healthz` | none | the deployment's own view of what it can read | 200 | `no-store` |
 
-**Public, unauthenticated, rate-limited — the volume surface.**
+**Public, unauthenticated, rate-limited: the volume surface.**
 
 | Method | Path | Request | Response | Status | Cache |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/verify` | `?log=<https url>` `?budget=<usd>` `?format=json` | the `PublishedProof` | 200 / 400 / 422 / 429 | `public, max-age=30, stale-while-revalidate=300` |
 | GET | `/api/verify` | `?log=<https url>` `?budget=<usd>` | the same, JSON only, never a redirect | 200 / 400 / 422 / 429 | `public, max-age=60` **(new)** |
 
-**Authenticated — the owner.** `Authorization: Bearer <owner token>`; the token is stored
+**Authenticated: the owner.** `Authorization: Bearer <owner token>`; the token is stored
 as a SHA-256 hash, never in the clear.
 
 | Method | Path | Request | Response | Status |
 | --- | --- | --- | --- | --- |
 | POST | `/api/records` | `{log: "<jsonl text>", task?, claim?}` | `{slug, url, log_url, log_head, log_records, receipts}` | 201 / 400 / 401 / 409 / 413 |
-| GET | `/api/records` | — | `[{slug, task, created_at, log_head, published}]` | 200 / 401 |
-| GET | `/r/:slug` | — | the hosted record: the log bytes, `application/x-ndjson` | 200 / 404 |
-| GET | `/r/:slug/proof` | — | the full proof for the hosted record, chain re-read | 200 / 404 |
-| DELETE | `/api/records/:slug` | — | `{unpublished:true}` | 200 / 401 / 404 |
-| GET | `/api/usage` | — | `{records, verifications_30d, rpc_reads_30d}` | 200 / 401 |
+| GET | `/api/records` | n/a | `[{slug, task, created_at, log_head, published}]` | 200 / 401 |
+| GET | `/r/:slug` | n/a | the hosted record: the log bytes, `application/x-ndjson` | 200 / 404 |
+| GET | `/r/:slug/proof` | n/a | the full proof for the hosted record, chain re-read | 200 / 404 |
+| DELETE | `/api/records/:slug` | n/a | `{unpublished:true}` | 200 / 401 / 404 |
+| GET | `/api/usage` | n/a | `{records, verifications_30d, rpc_reads_30d}` | 200 / 401 |
 
-**Paid — the merchant.** `GET /v1/snapshot` $0.02, `/v1/history` $0.05, `/v1/deep` $0.10,
+**Paid: the merchant.** `GET /v1/snapshot` $0.02, `/v1/history` $0.05, `/v1/deep` $0.10,
 `/v1/briefing` $0.25 (prices from `src/catalog.ts:17-67`). `GET /catalog` is free.
 
 **Addresses (HTML surfaces).** The pages are served at clean addresses: `/`, `/runs`,
@@ -668,7 +668,7 @@ Three things about this path are worth stating because they are the product:
 ### 4.4 The third-party verification endpoint: what is and is not authenticated
 
 **Nothing is authenticated, and that is the product.** No API key, no session, no cookie.
-The claim in the README is "Capsule verifies **any** agent's spending record" — a stranger
+The claim in the README is "Capsule verifies **any** agent's spending record", a stranger
 must be able to check a stranger's record without an account, or the network effect does
 not exist.
 
@@ -680,7 +680,7 @@ What the endpoint *does* enforce, at the network level:
 | no credentials in the URL | `src/net.ts:108` |
 | the host may not be an address literal pointing anywhere private | `src/net.ts:114` |
 | every resolved address is a public unicast address, checked **after** resolution | `src/net.ts:120-131` |
-| the socket connects to the address that was checked — no rebinding window | `src/net.ts:149`, `:216` |
+| the socket connects to the address that was checked, so there is no rebinding window | `src/net.ts:149`, `:216` |
 | every redirect hop is re-checked | `src/net.ts:182-189` |
 | the body is capped at 512 kB, the read at 8 s | `src/net.ts:28-29` |
 
@@ -689,7 +689,7 @@ What it does **not** check, and what a reader must be told:
 | Not checked | Consequence |
 | --- | --- |
 | that the log's author is who they say | the log is the author's claim; we check what is checkable |
-| that the **prices** in the log are the real prices | the refusal prices are the owner's claim — this is the asymmetry (`README.md:184-204`) |
+| that the **prices** in the log are the real prices | the refusal prices are the owner's claim; this is the asymmetry (`README.md:184-204`) |
 | that the **payer** is the agent's session wallet | on the third-party path `expectedSender` is `null` (`src/verify-log.ts:290`), so we prove "a transfer of the expected amount exists", not "their wallet paid it". The owner's own record *does* assert the sender (`src/app.ts:121`). |
 | that the log is fresh | we re-fetch after the cache TTL |
 | that the author has not rewritten the log | only a Capsule-format log gets its hash chain checked, and that is a bonus (`src/verify-log.ts:206-214`) |
@@ -741,7 +741,7 @@ argument for hosting, and it is an engineering argument, not a marketing one.
 **The revenue path, restated against the code:** the repository is already an x402
 merchant that settles USDC on Base through the Pieverse facilitator (`src/app.ts:239`,
 `src/kite.ts:12`), and the settlement code has run against real payments. It has never
-*received* money, because our host is not on the Passport's allowlist — one message to
+*received* money, because our host is not on the Passport's allowlist; one message to
 Kite puts it there (`README.md:298`). The hosted tier is what the owner buys with that
 money: a stable URL, a record that survives the owner's server going down, and a proof
 that a customer can open without trusting the owner's infrastructure.
@@ -956,11 +956,11 @@ Rules:
 
 | Outside | Why |
 | --- | --- |
-| **The chain** | It is not a database we own. It is the source of truth for every payment, and we read it live at request time. Storing "this transfer was confirmed" in Postgres would create a second, weaker source of truth that could disagree with the chain — and the whole point of `/proof.json` is that it does not trust our own copy (`src/app.ts:166-167`). `chain_verdict` is a **cache of an immutable fact**, not a copy of a mutable one. |
+| **The chain** | It is not a database we own. It is the source of truth for every payment, and we read it live at request time. Storing "this transfer was confirmed" in Postgres would create a second, weaker source of truth that could disagree with the chain, and the whole point of `/proof.json` is that it does not trust our own copy (`src/app.ts:166-167`). `chain_verdict` is a **cache of an immutable fact**, not a copy of a mutable one. |
 | **The chain head** | It moves every 2 seconds. It is cached for 5 seconds in one row and is never a record of anything. |
-| **The log format** | It is a file format a third party can write without us (`public/log-writer.mjs`, 114 lines; `/docs/format`; a test writes a log with the published writer and verifies it with our implementation). If the database held a row per decision, our schema would *become* the format, and a third party's log would have to be in our schema to be verified — the exact opposite of the product's claim. The hosted tier stores the log's **bytes** and the derived receipts; it does not model a decision. |
+| **The log format** | It is a file format a third party can write without us (`public/log-writer.mjs`, 114 lines; `/docs/format`; a test writes a log with the published writer and verifies it with our implementation). If the database held a row per decision, our schema would *become* the format, and a third party's log would have to be in our schema to be verified, which is the exact opposite of the product's claim. The hosted tier stores the log's **bytes** and the derived receipts; it does not model a decision. |
 | **The refusals** | They are the owner's claim (`README.md:184-204`). They live in the log, and the receipts carry them next to the `chain_checks` with the same provenance labels the proof payload already uses. Putting them in a table with the payments would present them as equally proven. A database does not make a refusal more true; it only makes it look more official. |
-| **The Kite Passport session and the delegation** | The cap is enforced in Kite's backend; the session is theirs. We store the session id and the two caps **as the owner published them in their signed log** — a copy of a claim, tagged as a claim (`record.session_id`, `record.max_*`). We never re-read the Passport's authoritative state, because we could not verify the copy anyway. |
+| **The Kite Passport session and the delegation** | The cap is enforced in Kite's backend; the session is theirs. We store the session id and the two caps **as the owner published them in their signed log**; a copy of a claim, tagged as a claim (`record.session_id`, `record.max_*`). We never re-read the Passport's authoritative state, because we could not verify the copy anyway. |
 | **The agent's signing key** | `.kite-passport/runtime.key` never leaves the machine that holds it. It signs the head (`src/attest.ts:109`); it is never uploaded, and `.vercelignore` keeps it out of the deployment (`docs/ENGINEERING-REVIEW.md:74-85`). |
 
 ---
@@ -986,7 +986,7 @@ Rules:
 | the same, in-process | `ChainReader.receipts` Map (`src/proof.ts:224`) | process lifetime | process death | a warm-instance fast path |
 | **The chain head** | Postgres `chain_head` + a 5 s process memo | **5 s** | time | the only mutable chain fact we read |
 | **The published key set from Kite** | process | 10 min | time | `src/attest.ts:75`; a key revocation should take ≤10 min to appear |
-| **Our own proof payload** | edge | **not cached** | — | `/proof.json` sets `max-age=0, must-revalidate` and misses the edge on every request, by design — see §0.5 |
+| **Our own proof payload** | edge | **not cached** | n/a | `/proof.json` sets `max-age=0, must-revalidate` and misses the edge on every request, by design, see §0.5 |
 | `/runs.json` | edge | 30 s | time | unchanged from `src/app.ts` |
 | `/runs/:id.json` | edge | 30 s | time | **changed**: was `30 s + SWR 300 s`; the SWR is gone (`docs/OPTIMIZATION.md` §2.3) |
 | **The published log bytes** | edge + the bundle | 60 s | a new deploy | `src/app.ts` |
@@ -1025,7 +1025,7 @@ the recipient all come from the receipt, which cannot change for a mined transac
 | | immutable? | cached |
 | --- | --- | --- |
 | `eth_getTransactionReceipt(hash)` | yes, once mined | forever |
-| `eth_blockNumber()` | no — a new block every 2 s | 5 s |
+| `eth_blockNumber()` | no, a new block every 2 s | 5 s |
 | the verdict `confirmed \| mismatch` | yes | forever |
 | `confirmations` | no | recomputed per response from the 5 s head |
 
@@ -1041,14 +1041,14 @@ never persisted.
 
 **A second subtlety: reorgs.** A mined transaction can, in principle, be reorged out.
 Base is an L2 whose blocks are anchored to Ethereum, but this code does not read L1's
-`safe`/`finalized` head — it reads the L2 head. The rule that follows: a verdict is
+`safe`/`finalized` head; it reads the L2 head. The rule that follows: a verdict is
 **frozen** once the transaction has 64 L2 blocks of depth (≈ 128 s at Base's 2 s block
 time) and is **re-checked** until then. A verdict younger than that is soft; a verdict
 older than that is hard. Reading L1's `safe` head would be the stricter answer and is a
-one-line addition to `rpc()` — but it is a different claim ("finalised"), and the product
+one-line addition to `rpc()`, but it is a different claim ("finalised"), and the product
 currently claims "confirmed on chain", which is what it says.
 
-### 6.5 The numbers — measured and estimated
+### 6.5 The numbers: measured and estimated
 
 **Measured today, 2026-11-13, against the free public Base RPC
 (`https://mainnet.base.org`) and the live deployment:**
@@ -1061,10 +1061,10 @@ currently claims "confirmed on chain", which is what it says.
 | live `GET /runs.json` | 3 | 200; 611–795 ms |
 | live `GET /verify?log=…&format=json` | 3 | 200; 677–767 ms |
 | live `GET /decision-log.jsonl` | 1 | 200; 938 ms; 3,458 B |
-| edge hit/miss | — | `/runs.json`, `/decision-log.jsonl`, `/verify` → `x-vercel-cache: HIT`; **`/proof.json` → `MISS` every time** |
-| `Cache-Control` on `/proof.json` | — | `public, max-age=0, must-revalidate` — Vercel's default, because the handler sets none |
-| `Cache-Control` on `/runs/:id.json` | — | `public, max-age=30, stale-while-revalidate=300` |
-| head block at measurement time | — | `0x363bac3` = 56,867,523 |
+| edge hit/miss | n/a | `/runs.json`, `/decision-log.jsonl`, `/verify` → `x-vercel-cache: HIT`; **`/proof.json` → `MISS` every time** |
+| `Cache-Control` on `/proof.json` | n/a | `public, max-age=0, must-revalidate`; Vercel's default, because the handler sets none |
+| `Cache-Control` on `/runs/:id.json` | n/a | `public, max-age=30, stale-while-revalidate=300` |
+| head block at measurement time | n/a | `0x363bac3` = 56,867,523 |
 | concurrent `head()` calls, cold reader | 1 | **2 `eth_blockNumber` RPC calls** (see §7.2) |
 | two receipts fetched in parallel, cold | 1 | 660 ms, 2/2 found |
 
@@ -1076,7 +1076,7 @@ currently claims "confirmed on chain", which is what it says.
 | A warm instance answers in ≈ 0.72 s | matches the live measurement: 2 head reads in parallel (~320 ms) + ~400 ms of function overhead |
 | With the verdict cache, a served proof costs **1 RPC** | the verdict is in `chain_verdict`; only the head is read |
 | With the head cached 5 s, a served proof costs **0.2 RPC/s** amortised | one head read per 5 s per chain, shared across all instances |
-| 10,000 third-party verifications/day | ≈ 7 head reads/minute, ≈ 10,000 fetches/day, 3 SQL each ≈ 30,000 statements/day — a trivial load for one Postgres instance |
+| 10,000 third-party verifications/day | ≈ 7 head reads/minute, ≈ 10,000 fetches/day, 3 SQL each ≈ 30,000 statements/day, which is a trivial load for one Postgres instance |
 | The free public RPC is **not** a production dependency | it has no published SLA, and I observed one `ETIMEDOUT` against it during this session (a burst of parallel calls) while 30/30 later calls succeeded. A keyed RPC provider is required before volume. |
 
 ### 6.6 What the caches buy, end to end
@@ -1095,10 +1095,10 @@ currently claims "confirmed on chain", which is what it says.
 ## 7. Implementation code
 
 Three pieces: the cache layer with its invalidation rule, the store interface, and the
-request path. They are written in the repository's style — TypeScript, `strict` with
+request path. They are written in the repository's style: TypeScript, `strict` with
 `noUncheckedIndexedAccess`, the same doc-comment voice, the same `.js` import specifiers.
 
-### 7.1 `src/cache.ts` — the verdict cache and the head cache
+### 7.1 `src/cache.ts`: the verdict cache and the head cache
 
 ```ts
 /**
@@ -1106,8 +1106,8 @@ request path. They are written in the repository's style — TypeScript, `strict
  *
  * Two facts, cached differently, because they are different kinds of fact.
  *
- * A mined transaction's receipt cannot change. What the chain says about it —
- * found, reverted, the block, the transfers, the sender — is therefore
+ * A mined transaction's receipt cannot change. What the chain says about it (
+ * found, reverted, the block, the transfers, the sender) is therefore
  * immutable, and so is the verdict we derive from it. That verdict is cached
  * forever and is never invalidated.
  *
@@ -1319,7 +1319,7 @@ export class PostgresVerdictStore implements VerdictStore {
  * The shared head.
  *
  * One row per chain, upserted every five seconds. Twelve writes a minute for
- * the whole deployment. That is why there is no Redis here — §10 says why.
+ * the whole deployment. That is why there is no Redis here: §10 says why.
  */
 export class PostgresHeadCache implements HeadCache {
   constructor(
@@ -1349,7 +1349,7 @@ export class PostgresHeadCache implements HeadCache {
 
 ### 7.2 The two fixes to `src/proof.ts`
 
-**Fix 1 — `ChainReader.head()` memoises the promise, not the value.** Today
+**Fix 1: `ChainReader.head()` memoises the promise, not the value.** Today
 (`src/proof.ts:229-234`):
 
 ```ts
@@ -1407,7 +1407,7 @@ export class ChainReader {
 }
 ```
 
-**Fix 2 — `/proof.json` sets a `Cache-Control`.** It sets none today, so Vercel applies
+**Fix 2: `/proof.json` sets a `Cache-Control`.** It sets none today, so Vercel applies
 its default, `public, max-age=0, must-revalidate`, and the edge re-invokes the function
 on **every** request. Measured: `x-vercel-cache: MISS` on five consecutive requests.
 One line fixes it:
@@ -1428,8 +1428,8 @@ app.get("/proof.json", async (_request: Request, response: Response) => {
 ### 7.3 The verifier that uses the cache
 
 `verifyStep` (`src/proof.ts:271`) becomes a thin wrapper over a `ChainVerifier` that owns
-the reader and the two caches. Every existing caller — `src/app.ts:117` and
-`src/verify-log.ts:286` — keeps working, and every existing test keeps passing, because
+the reader and the two caches. Every existing caller (`src/app.ts:117` and
+`src/verify-log.ts:286`) keeps working, and every existing test keeps passing, because
 the wrapper constructs the in-memory caches.
 
 ```ts
@@ -1653,7 +1653,7 @@ swaps in the Postgres caches.
  *     at a URL that does not move. This is the paid tier.
  *
  * The interface is small because the difference is small. That is the whole
- * reason it exists — it is not here to tidy the codebase up.
+ * reason it exists: it is not here to tidy the codebase up.
  */
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -1750,7 +1750,7 @@ and it is the only place in the codebase that knows the schema.
 /**
  * The hosted-record routes.
  *
- * Four verbs: publish, list, read, unpublish. Nothing here can move money —
+ * Four verbs: publish, list, read, unpublish. Nothing here can move money;
  * this module does not import `kpass.ts`, and that is deliberate.
  */
 import { Router } from "express";
@@ -1816,7 +1816,7 @@ export function hostRouter(
 The verification path, with the rate limit and the durable row:
 
 ```ts
-// src/app.ts — the third-party route, rewritten
+// src/app.ts: the third-party route, rewritten
 const limiter = new TokenBucket(30, 0.5);        // 30 requests, refilling at 30/min
 const urlLimiter = new TokenBucket(6, 0.1);      // 6 requests per URL, refilling at 6/min
 
@@ -1909,10 +1909,10 @@ this list is not in the first production release.
 | 4 | `src/store.ts` | ~90 lines | `RecordStore`, `FileRecordStore` + `PostgresRecordStore` |
 | 5 | `src/host.ts` | ~120 lines | `POST /api/records`, `GET /api/records`, `GET /r/:slug`, `DELETE /api/records/:slug` |
 | 6 | `src/paths.ts` | ~8 lines | `REPO_ROOT` out of `src/proof.ts` |
-| 7 | `src/proof.ts` — `ChainReader.head()` memoises the promise | ~10 lines changed | **the measured 2-RPC bug** |
-| 8 | `src/proof.ts` — `ChainVerifier` + the `verifyStep` wrapper | ~120 lines | the tri-state preserved |
-| 9 | `src/app.ts` — `Cache-Control` on `/proof.json`, the rate limit on `/verify`, `/api/verify` | ~40 lines | |
-| 10 | `src/app.ts` — `PostgresVerdictStore` + `PostgresHeadCache` wired into `checkRecord` and `verifyPublishedLog` | ~20 lines | |
+| 7 | `src/proof.ts`: `ChainReader.head()` memoises the promise | ~10 lines changed | **the measured 2-RPC bug** |
+| 8 | `src/proof.ts`: `ChainVerifier` + the `verifyStep` wrapper | ~120 lines | the tri-state preserved |
+| 9 | `src/app.ts`: `Cache-Control` on `/proof.json`, the rate limit on `/verify`, `/api/verify` | ~40 lines | |
+| 10 | `src/app.ts`: `PostgresVerdictStore` + `PostgresHeadCache` wired into `checkRecord` and `verifyPublishedLog` | ~20 lines | |
 | 11 | `test/cache.test.ts`, `test/store.test.ts` | ~250 lines | the cache key, the TTL, the "not mined is not cached" rule |
 
 **Total: ~1,000 lines of new TypeScript, ~180 lines of SQL, ~250 lines of tests, one new
@@ -1949,7 +1949,7 @@ dropped. The `/verify` path keeps working with the in-memory caches.
 
 | Criterion | What the MPV adds |
 | --- | --- |
-| **Creativity** | nothing new, and that is the point — the creativity is the price of a limit, already built and already measured |
+| **Creativity** | nothing new, and that is the point: the creativity is the price of a limit, already built and already measured |
 | **User readiness** | a third party's record no longer has to live on the owner's server. `GET /r/:slug` is one URL that always resolves, which is the difference between "here is a link to a file" and "here is your record" |
 | **Revenue potential** | the hosted tier is the thing the x402 merchant can be paid for. Today the repository is a merchant that has never received money because our host is not on the Passport's allowlist (`README.md:298`). The hosted tier gives the owner something to buy: a stable URL, a durable record, and a proof they can hand to a customer |
 
@@ -1973,17 +1973,17 @@ verdict is worth caching forever.**
 A mined receipt cannot change, so "confirmed" / "mismatch", the transfers, the sender and
 the block are immutable facts, keyed by (tx hash, chain, amount, sender). The head is the
 only mutable chain fact we read, it moves every two seconds, and it decides exactly one
-number — `confirmations`. So: verdict cached forever, head cached for seconds,
+number, `confirmations`. So: verdict cached forever, head cached for seconds,
 confirmations recomputed per response.
 
 **This decision is now implemented, and it turned out to be a correctness fix rather
 than a speed-up.** The measured defect was that `ChainReader.head()` memoised the
-*value* rather than the *promise*, so N parallel checks made N head reads — and, worse,
+*value* rather than the *promise*, so N parallel checks made N head reads, and, worse,
 the head was never read again for the life of the process, so a confirmation count
 could be hours old while being presented as current. Measured: the chain moved 10,000
 blocks and the answer did not move with it. `docs/OPTIMIZATION.md` §2.1 has the before
-and after. The fix — a head with a thirty-second life, in-flight reads shared, only
-mined receipts kept — is in `src/proof.ts` and is pinned by five tests.
+and after. The fix (a head with a thirty-second life, in-flight reads shared, only
+mined receipts kept) is in `src/proof.ts` and is pinned by five tests.
 
 The one thing in this section that was **not** done is adding a `Cache-Control` to
 `/proof.json` so the edge would serve it. The reason is in §0.5.
@@ -1992,7 +1992,7 @@ The one thing in this section that was **not** done is adding a `Cache-Control` 
 chain, and it does not promote the refusals.**
 The chain is not a database we own; it is the source of truth for the payments and we read
 it live. The log format is a file format a third party writes without us, so the hosted
-tier stores the log's **exact bytes** and the derived receipts — never a row per
+tier stores the log's **exact bytes** and the derived receipts, never a row per
 decision, because a table schema that models a decision makes our schema the format and
 breaks the product's central claim. And the refusals stay the owner's claim: they live in
 the log, they are priced in the receipts, they sit next to the `chain_checks` with the
@@ -2001,7 +2001,7 @@ and that is the one dishonesty this README is careful about (`README.md:184-204`
 
 **3. Two tiers, one code path: "bring your own log URL" is free and open; "we host your
 record" is the paid one.**
-The free tier is the network effect the README already claims — anyone can check
+The free tier is the network effect the README already claims: anyone can check
 anyone's record without a key, and the third-party path is already hardened against
 SSRF, DNS rebinding, oversized bodies and slow hosts. The paid tier is what the
 x402 merchant is *for*: the owner hands us the log, we store the bytes and serve a URL
@@ -2024,12 +2024,12 @@ delivered the same outcome for a third of the cost
 | --- | --- |
 | **A `core/` + `adapters/` restructure** | `src/verify-log.ts` already reuses `ChainReader` and `verifyStep` from `src/proof.ts`. The duplication is ~40 lines; the outcome a third party experiences is a writer they can use, not a directory layout. **The public interface of this product is the log format and the HTTP API.** The one new interface in this document (`RecordStore`) earns its keep because the *product* has two modes, not because the codebase is untidy. |
 | **A queue, a worker, an event bus** | The whole product is request/response plus one append-only file writer. The only long operation is an agent run, and that is a script (`npm run demo`), not a service. A queue in front of a 720 ms endpoint is how a demo starts pretending to be a platform. |
-| **Redis** | The two cache needs are (a) immutable verdicts keyed by a transaction hash and (b) one head row per chain. Both fit Postgres: one row per transaction ever seen, and twelve head upserts a minute for the whole deployment. Redis would be a second deployable, a second set of credentials, and an invalidation story for something Postgres already solves. At 100× we would add it — for the head, and a read replica — and not before. |
-| **A bundler for the front end** | the front end is plain files served as they are, with no build step. The engineering review already lists "a bundler, when the UI grows past a few modules" as open (`docs/ENGINEERING-REVIEW.md:139`). It has now grown — to 12 modules and a component library — and still does not need one, because the modules are ES modules the browser loads natively and there is no compile step to justify a build step. |
-| **A row per decision** | The log format is the public interface. A table that models a decision makes our schema the format, and then a third party's log would have to be in our schema to be verified — the opposite of "you do not have to write in our format" (`README.md:152`). |
+| **Redis** | The two cache needs are (a) immutable verdicts keyed by a transaction hash and (b) one head row per chain. Both fit Postgres: one row per transaction ever seen, and twelve head upserts a minute for the whole deployment. Redis would be a second deployable, a second set of credentials, and an invalidation story for something Postgres already solves. At 100× we would add it, for the head, and a read replica, and not before. |
+| **A bundler for the front end** | the front end is plain files served as they are, with no build step. The engineering review already lists "a bundler, when the UI grows past a few modules" as open (`docs/ENGINEERING-REVIEW.md:139`). It has now grown, to 12 modules and a component library, and still does not need one, because the modules are ES modules the browser loads natively and there is no compile step to justify a build step. |
+| **A row per decision** | The log format is the public interface. A table that models a decision makes our schema the format, and then a third party's log would have to be in our schema to be verified: the opposite of "you do not have to write in our format" (`README.md:152`). |
 | **A hosted wallet, a card, a spend dashboard** | `docs/BRIEF.md:83`: "Not a wallet, a card issuer, or a spend-management dashboard." The cap is the Passport's, enforced in Kite's backend. Building a wallet would put the limit back inside our code. |
 | **Multi-agent orchestration, a retry policy, a scheduler** | The evidence this project owns is one task, one agent, one session, run twice with one number changed. Orchestration would dilute the one experiment that makes the product legible. |
-| **The set-cover solver in this pass** | It needs a decision about coverage — *declared* from the catalog's metadata versus *demonstrated* by a purchase — and that decision has not been made (`docs/ENGINEERING-REVIEW.md:202-215`). A solver over declared coverage computes a hypothetical number that can disagree with the observed $0.051, and two different numbers for one idea on one page is worse than one number. |
+| **The set-cover solver in this pass** | It needs a decision about coverage: *declared* from the catalog's metadata versus *demonstrated* by a purchase, and that decision has not been made (`docs/ENGINEERING-REVIEW.md:202-215`). A solver over declared coverage computes a hypothetical number that can disagree with the observed $0.051, and two different numbers for one idea on one page is worse than one number. |
 | **A trust score or reputation layer** | The refusals are the owner's claim. A score would launder a claim into a fact, which is the one dishonesty the README is careful about. If the refusals ever get a chain anchor, it will be an attestation transaction per refusal (`docs/PROVENANCE.md:75`), and the score will come after that, not before. |
 | **A "status" endpoint that hides its own failures** | `/healthz` already reports what the deployment can and cannot read (`src/app.ts:214-235`). A status page that says "green" while a file is missing from the bundle is exactly the failure mode the engineering review caught (`docs/ENGINEERING-REVIEW.md:61-72`). |
 | **An ORM** | Five tables, one migration script, forward-only SQL. An ORM is a second way to express the same schema and a second thing to keep in step with it. |
@@ -2038,8 +2038,8 @@ delivered the same outcome for a third of the cost
 
 ## 11. What I could not verify
 
-- **The hosted tier has no customer.** `docs/BRIEF.md:7-15` states payment evidence as
-  "level 5 — our own belief". Everything in §5 is designed so that it is *not* built
+- **The hosted tier has no customer.** `docs/BRIEF.md:7-15` states the payment evidence at
+  level 5, our own belief. Everything in §5 is designed so that it is *not* built
   until there is one, and §8.4 says to do the caching fixes first.
 - **The free public Base RPC has no published SLA.** I observed one `ETIMEDOUT` against
   `mainnet.base.org` during this session under a burst, while 30 of 30 later calls
@@ -2049,7 +2049,7 @@ delivered the same outcome for a third of the cost
   is 2 s and its finality is anchored to Ethereum, but this code does not read L1's
   `safe` head, so "64 blocks" is a conservative choice, not a guarantee. Reading
   `eth_getBlockByNumber("safe")` would be the stronger claim and a one-line addition to
-  `rpc()` — but it would change what the product says it proves, so it is a decision, not
+  `rpc()`, but it would change what the product says it proves, so it is a decision, not
   a refactor.
 - **The rate limits (30/min per IP, 6/min per URL, 20 in flight) are estimates.** They
   are set so that a judge clicking around never meets them. They should be tuned against

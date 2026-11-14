@@ -61,9 +61,9 @@ for (const path of ENDPOINTS) {
     min: Math.round(Math.min(...times)),
     median: Math.round(percentile(times, 50)),
     p95: Math.round(percentile(times, 95)),
-    cache: headers.get("cache-control") ?? "—",
-    edge: headers.get("x-vercel-cache") ?? headers.get("x-cache") ?? "—",
-    age: headers.get("age") ?? "—",
+    cache: headers.get("cache-control") ?? "n/a",
+    edge: headers.get("x-vercel-cache") ?? headers.get("x-cache") ?? "n/a",
+    age: headers.get("age") ?? "n/a",
   });
 }
 

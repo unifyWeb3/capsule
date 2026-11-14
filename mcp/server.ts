@@ -40,7 +40,7 @@ server.registerTool(
   {
     title: "Verify a published spending record",
     description:
-      "Verify any agent's published spending record. Fetches the log over https with an SSRF-guarded, pinned-address fetch, checks its hash chain when it is in Capsule's format, re-reads every payment off the chain, and prices the refusals from the log. Returns a machine-readable proof: what was bought, what was refused, what the limit cost. The refusals are reported as the owner's claim — a refusal leaves no transaction; everything checkable is checked.",
+      "Verify any agent's published spending record. Fetches the log over https with an SSRF-guarded, pinned-address fetch, checks its hash chain when it is in Capsule's format, re-reads every payment off the chain, and prices the refusals from the log. Returns a machine-readable proof: what was bought, what was refused, what the limit cost. The refusals are reported as the owner's claim: a refusal leaves no transaction; everything checkable is checked.",
     inputSchema: {
       log_url: z
         .string()
