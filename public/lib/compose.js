@@ -173,8 +173,16 @@ export function substitutionProps(proof) {
  */
 export function verificationProps(proof) {
   const checks = proof.chain_checks ?? [];
+  // The flag is the server's answer. When an older payload does not carry it,
+  // the same answer is derived from the checks rather than defaulting to the
+  // failure state: two confirmed payments must never read as "unconfirmed".
+  const allConfirmed =
+    typeof proof.all_payments_verified_on_chain === "boolean"
+      ? proof.all_payments_verified_on_chain
+      : checks.length > 0 && checks.every((check) => check.outcome === "confirmed");
   return {
-    ok: proof.all_payments_verified_on_chain === true,
+    ok: allConfirmed,
+    noPayments: checks.length === 0,
     head: proof.chain?.symbol ?? "USDC",
     network: proof.chain?.network ?? "",
     // When the chain was read. The answer may be handed to a reader a little

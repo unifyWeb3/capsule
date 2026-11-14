@@ -165,6 +165,12 @@ export interface PublishedProof {
     tx_hash: string | null;
   }>;
   chain_checks: ChainCheck[];
+  /**
+   * True when the log records at least one payment and every one of them was
+   * read off the chain and confirmed. The same flag our own proof carries, so
+   * one client reads one shape however the log was published.
+   */
+  all_payments_verified_on_chain: boolean;
   /** The check, step by step. */
   trace: TraceStep[];
   notes: string[];
@@ -238,6 +244,17 @@ function parseRecords(body: string): PublishedRecord[] {
       }
       return parsed as PublishedRecord;
     });
+}
+
+/**
+ * Are every one of the log's payments confirmed on the chain?
+ *
+ * A log with no payments is not a verified log: there is nothing to confirm,
+ * so the answer is false and the reader is told so in words. An unreadable
+ * payment (the chain could not be read) is not a confirmation either.
+ */
+export function allPaymentsConfirmed(checks: ChainCheck[]): boolean {
+  return checks.length > 0 && checks.every((check) => check.outcome === "confirmed");
 }
 
 /**
@@ -422,7 +439,7 @@ export async function verifyPublishedLog(
   );
   const budgetRaw = options.budgetUsd ?? Number(session.max_total_amount ?? 0);
   const budget = Number.isFinite(budgetRaw) && budgetRaw > 0 ? budgetRaw : null;
-  const allConfirmed = checks.length > 0 && checks.every((check) => check.outcome === "confirmed");
+  const allConfirmed = allPaymentsConfirmed(checks);
 
   step(
     "read the refusals",
@@ -472,6 +489,7 @@ export async function verifyPublishedLog(
     },
     steps,
     chain_checks: checks,
+    all_payments_verified_on_chain: allConfirmed,
     trace,
     notes,
   };

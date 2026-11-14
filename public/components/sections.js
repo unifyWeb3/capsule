@@ -177,8 +177,12 @@ export function VerificationPanel(props) {
   const head = html`<div class="verify-head">
     ${raw(
       StatusChip({
-        kind: props.ok ? "verified" : "fault",
-        label: props.ok ? "every payment confirmed on chain" : "a payment is unconfirmed",
+        kind: props.noPayments ? "neutral" : props.ok ? "verified" : "fault",
+        label: props.noPayments
+          ? "no payments to confirm"
+          : props.ok
+            ? "every payment confirmed on chain"
+            : "a payment is unconfirmed",
       }),
     )}
     <span class="headline">${props.head} on ${props.network}</span>

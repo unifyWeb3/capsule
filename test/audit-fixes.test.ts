@@ -20,6 +20,8 @@ import {
   type Attestation,
 } from "../src/attest.js";
 import type { Menu } from "../src/menu.js";
+import { allPaymentsConfirmed } from "../src/verify-log.js";
+import type { ChainCheck } from "../src/proof.js";
 
 const EMPTY_MENU: Menu = {
   generated_at: "2026-11-13T00:00:00Z",
@@ -223,4 +225,39 @@ test("L3+L4: a fresh signature verifies, binds its artifact, and the legacy mess
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+// ---- the third-party proof must not understate what the chain says ---------
+
+test("every payment confirmed is true only when there is one and it is confirmed", () => {
+  const check = (outcome: ChainCheck["outcome"]): ChainCheck => ({
+    tx_hash: "0x" + "11".repeat(32),
+    outcome,
+    found: outcome === "confirmed",
+    block_number: 1,
+    confirmations: 1,
+    merchant: "example",
+    recipient: "0x" + "22".repeat(20),
+    sender: "0x" + "33".repeat(20),
+    transfers: [],
+    note: "",
+  });
+
+  assert.equal(allPaymentsConfirmed([]), false, "no payments is not a verified log");
+  assert.equal(allPaymentsConfirmed([check("confirmed")]), true, "one confirmed payment");
+  assert.equal(
+    allPaymentsConfirmed([check("confirmed"), check("confirmed")]),
+    true,
+    "two confirmed payments",
+  );
+  assert.equal(
+    allPaymentsConfirmed([check("confirmed"), check("unavailable")]),
+    false,
+    "a payment the chain could not be read is not a confirmation",
+  );
+  assert.equal(
+    allPaymentsConfirmed([check("confirmed"), check("mismatch")]),
+    false,
+    "a payment that did not match is not a confirmation",
+  );
 });

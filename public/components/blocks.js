@@ -39,11 +39,15 @@ export function Caveat(props) {
  */
 export function Panel(props) {
   return html`<div class="verify">
-    <div class="verify-head">
-      <span class="headline">${props.head}</span>
-      <span class="spacer"></span>
-      ${props.note ? html`<span class="verify-note">${props.note}</span>` : ""}
-    </div>
+    ${
+      props.head
+        ? html`<div class="verify-head">
+            <span class="headline">${props.head}</span>
+            <span class="spacer"></span>
+            ${props.note ? html`<span class="verify-note">${props.note}</span>` : ""}
+          </div>`
+        : ""
+    }
     ${raw(props.body)}
   </div>`;
 }
