@@ -193,17 +193,18 @@ stop and fix it: a video with a stale number is worse than no video.
 - [ ] `npm view capsule-mcp version` answers `0.1.0`. If the publish has not
       happened yet, cut the `capsule-mcp` sentence from the write-up in field 7 and
       from reply 2.
-- [ ] The live deployment serves the new `/cost` page. The code is pushed; the
-      deployment is one click in the Vercel dashboard (or one `create_deployment`
-      from the pushed commit). Until then, `/cost` is in the repository and not on
-      the live site, so the write-up's calculator paragraph is a claim about the
-      repository. Deploy first, then submit.
+- [x] The live deployment serves the new `/cost` page. **Done:** deployed from the
+      pushed commit, and `/cost`, `/api/limit-cost` and the 301 from `/cost.html`
+      were re-read from outside the session afterwards.
 
 ## Still open
 
 - The stranger test: give somebody the `/verify` URL and watch them use it without
   help. Nobody has done this but us, and it is the one thing that would prove "user
   readiness" instead of asserting it.
+- The npm publish: one command, `npm_config_otp=<code> npm run mcp:pack`, once an
+  authenticator app is enabled on the npm account. If it does not happen, cut the
+  `capsule-mcp` sentence from the write-up in field 7 and from reply 2.
 - Fields 14, 16, 17, 20, 21: the user's call.
 - The submission itself. **Do not submit on the strength of the artifact alone.** The
   submission is an authorized action and the last step.

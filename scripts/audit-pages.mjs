@@ -60,6 +60,7 @@ const PAGES = [
   ],
   ["09-components", "/components"],
   ["10-replay", "/replay"],
+  ["11-cost", "/cost"],
 ];
 
 /** The counts that say a page rendered something rather than nothing. */
@@ -70,6 +71,7 @@ const COUNTS = {
   runcards: ".runcard",
   whyModel: ".why-model",
   callout: ".callout",
+  costfacts: ".costfacts .costfact",
 };
 
 /**
@@ -89,6 +91,7 @@ const MUST_CONTAIN = {
   "05-verify-trace": ["trace", "record"],
   "08-verify-foreign": ["trace", "record"],
   "09-components": ["record"],
+  "11-cost": ["costfacts"],
 };
 
 const VIEWPORTS = [
