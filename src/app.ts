@@ -23,6 +23,7 @@ import { verifyPublishedLog } from "./verify-log.js";
 import { sellerRouter } from "./seller.js";
 import { readReceipts, type Receipts, type ReceiptStep } from "./proof.js";
 import { buildProof } from "./build-proof.js";
+import { LimitInputError, priceLimit } from "./limit-api.js";
 import { PUBLIC_DIR, REPO_ROOT } from "./paths.js";
 import { allow } from "./rate-limit.js";
 
@@ -72,8 +73,40 @@ function tooMany(response: Response, retryAfterSeconds: number) {
   return response.status(429).json({
     error: "rate_limited",
     message:
-      "that is more verifications than this deployment allows in a minute; try again shortly",
+      "that is more calls than this deployment allows in a minute; try again shortly",
   });
+}
+
+/**
+ * The facts a caller sent, in order.
+ *
+ * A query string carries them either as repeated parameters or as one
+ * comma-separated list, because both are natural to type and only one of them
+ * survives a copy-and-paste through a chat window.
+ */
+function readFacts(value: unknown): string[] {
+  const raw = Array.isArray(value) ? value : value === undefined ? [] : [value];
+  const facts: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    for (const part of item.split(",")) {
+      const fact = part.trim();
+      if (fact) facts.push(fact);
+    }
+  }
+  return facts;
+}
+
+/** A cap a caller sent, in dollars. Undefined means "use the recorded one". */
+function readCap(value: unknown, name: string): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new LimitInputError(
+      `${name} must be a finite, non-negative number of dollars, e.g. 0.0025`,
+    );
+  }
+  return parsed;
 }
 
 /**
@@ -308,6 +341,56 @@ export function createApp(config: AppConfig = readConfig()) {
   });
 
   /**
+   * The limit calculator.
+   *
+   * Free, because it moves no money and reads no chain: it prices a set of
+   * facts against a set of caps over the catalog snapshot this deployment
+   * carries. The number it returns is the one the recorded run measured,
+   * computed by the same solver, so the page and the record cannot disagree
+   * about what a limit costs.
+   *
+   * With no parameters it answers the recorded run, which is the number the
+   * README quotes. With facts and caps it answers the caller's.
+   */
+  app.get("/api/limit-cost", async (request: Request, response: Response) => {
+    // The solver enumerates subsets of the facts, so the work grows with the
+    // number of them. One bucket per caller, and the fact count is bounded
+    // below, so this cannot be used to make the instance do unbounded work.
+    const ipKey = String(
+      request.ip ?? request.socket.remoteAddress ?? "unknown",
+    );
+    const ipLimit = allow(`limit:${ipKey}`, 30, 60_000);
+    if (!ipLimit.ok) return tooMany(response, ipLimit.retryAfterSeconds);
+
+    try {
+      const facts = readFacts(request.query.facts);
+      const perTx = readCap(request.query.per_tx, "per_tx");
+      const total = readCap(request.query.total, "total");
+      const answer = await priceLimit({
+        facts: facts.length ? facts : undefined,
+        perTxUsd: perTx,
+        totalUsd: total,
+      });
+      response.set("Cache-Control", "public, max-age=60");
+      return response.json(answer);
+    } catch (error) {
+      if (error instanceof LimitInputError) {
+        response.set("Cache-Control", "no-store");
+        return response.status(400).json({
+          error: "invalid_request",
+          message: error.message,
+        });
+      }
+      response.set("Cache-Control", "no-store");
+      return response.status(500).json({
+        error: "calculator_unavailable",
+        message:
+          error instanceof Error ? error.message : "the calculator could not be reached",
+      });
+    }
+  });
+
+  /**
    * The pages, at the addresses a reader would say out loud.
    *
    * The documents are files; the addresses are not. Each page is served at a
@@ -319,6 +402,7 @@ export function createApp(config: AppConfig = readConfig()) {
    */
   const PAGES: Record<string, string> = {
     "/": "index.html",
+    "/cost": "cost.html",
     "/runs": "runs.html",
     "/run": "run.html",
     "/replay": "replay.html",

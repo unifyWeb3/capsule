@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Capsule: what a spending limit costs</title>
+    <meta
+      name="description"
+      content="Price a spending limit before you sign it. Give the facts an answer needs and the caps a session holds, and Capsule solves for the cheapest basket of catalog endpoints, names the cap that forbade each one, and prices what was forbidden."
+    />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta property="og:image" content="https://capsule-phi-blond.vercel.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Capsule mark: a pill capsule in two tones of teal." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://capsule-phi-blond.vercel.app/og.png" />
+    <meta name="twitter:image:alt" content="The Capsule mark: a pill capsule in two tones of teal." />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <a class="skip" href="#answer">Skip to the answer</a>
+        <div class="upbar">
+      <div class="upbar-inner">
+        <span class="upbar-tag">SERV Hackathon 02 · Kite track</span>
+        <span class="upbar-right">
+          <span class="upbar-item"><i class="dot dot-verified" aria-hidden="true"></i>Record signed</span>
+          <span class="upbar-item">Base mainnet · USDC</span>
+          <a class="upbar-link" href="https://github.com/unifyWeb3/capsule" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        </span>
+      </div>
+    </div>
+    <div class="shell">
+      <header>
+        <div class="head-top">
+          <span class="wordmark">
+            <img src="/logo.svg" width="26" height="26" alt="Capsule logo" />
+            Capsule
+          </span>
+                <nav class="site-nav" aria-label="Site">
+          <a href="/">Record</a>
+          <a href="/cost" aria-current="page">Limit cost</a>
+          <a href="/runs">Runs</a>
+          <a href="/replay">Replay</a>
+          <a href="/docs/security-model">Security model</a>
+        </nav>
+        <a class="nav-cta" href="/verify">Verify your log <span aria-hidden="true">→</span></a>
+        </div>
+        <h1>
+          What a spending limit <span class="accent">costs</span>, before you sign it.
+        </h1>
+        <p class="standfirst">
+          A per-call cap and a total budget are easy to set and hard to reason about. The
+          recorded run shows why: a <strong>$0.0025</strong> budget bought <strong>$0.002</strong>
+          of evidence and left the answer <strong>$0.051</strong> short. This page prices
+          that trade for your facts and your caps, over the same catalog snapshot the run
+          used, with the same solver. No account, no session, nothing moves.
+        </p>
+
+        <form class="field field-cost" id="form" novalidate>
+          <div class="field-cost-facts">
+            <label for="facts">The facts the answer needs</label>
+            <textarea
+              id="facts"
+              name="facts"
+              rows="4"
+              spellcheck="false"
+              placeholder="current ETH price and 24h change&#10;sentiment and recent headlines"
+              aria-describedby="facts-hint"
+            ></textarea>
+            <p class="field-hint" id="facts-hint">
+              One per line. Leave it empty to price the recorded run.
+            </p>
+          </div>
+          <div class="field-cost-caps">
+            <label for="per-tx">Cap per call, in dollars</label>
+            <input
+              id="per-tx"
+              name="per_tx"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="0.002"
+            />
+            <label for="total">Budget in total, in dollars</label>
+            <input
+              id="total"
+              name="total"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="0.0025"
+            />
+            <button type="submit" id="go">Price it</button>
+          </div>
+        </form>
+      </header>
+
+      <section id="answer" aria-labelledby="answer-h">
+        <h2 id="answer-h">The answer</h2>
+        <div id="answer-body">
+          <div class="state" role="status" aria-live="polite"><p>Working out the price…</p></div>
+        </div>
+      </section>
+
+      <section id="rules" aria-labelledby="rules-h">
+        <h2 id="rules-h">How the number is worked out</h2>
+        <div class="prose">
+          <p>
+            The solver is exact, not clever. It enumerates the subsets of your facts,
+            costs the cheapest catalog endpoint that covers each one, takes the basket
+            that fits inside your caps, and reports what is left over. There is no model
+            in the loop and no cut-off, so the same inputs always give the same answer.
+          </p>
+          <ul>
+            <li>
+              <strong>A cover is demonstrated or declared, and the page says which.</strong>
+              A demonstrated cover is an endpoint the record already shows being chosen
+              for that fact, so its price is the merchant's quoted price and a paid
+              attempt carries its transaction. A declared cover is an endpoint whose own
+              catalog text claims the fact.
+            </li>
+            <li>
+              <strong>A claim has to be complete.</strong> Every meaningful word of your
+              fact has to appear in the endpoint's own text. Strictness costs recall and
+              buys the one thing worth buying here: a cover is never claimed without
+              something behind it.
+            </li>
+            <li>
+              <strong>A fact nobody sells is left unpriced.</strong> If no merchant in
+              the catalog claims it, the answer names it and leaves it out of the total
+              rather than putting a number in the headline that nothing backs.
+            </li>
+            <li>
+              <strong>What the caps forbade is priced once.</strong> If one endpoint
+              would have covered two facts, it is counted once, because that is what it
+              would have cost.
+            </li>
+          </ul>
+          <p>
+            The catalog is the live Kite service catalog, filtered to Base mainnet USDC,
+            snapshotted on <span id="catalog-when">the day of the run</span>. Prices
+            belong to the merchants. The same answer is available as
+            <a href="/api/limit-cost">/api/limit-cost</a> and as the
+            <code>price_my_limit</code> tool in the <code>capsule-mcp</code> package.
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <span class="wordmark wordmark-light"><img src="/logo.svg" width="22" height="22" alt="Capsule logo" />Capsule</span>
+          <p class="footer-tag">The record of what an agent did with your money.</p>
+          <p class="footer-note">The payments are the chain's. The refusals are the owner's claim.</p>
+        </div>
+        <nav class="footer-col" aria-label="Product">
+          <h3>Product</h3>
+          <a href="/">The record</a>
+          <a href="/cost">What a limit costs</a>
+          <a href="/runs">The runs</a>
+          <a href="/replay">Replay</a>
+          <a href="/verify">Verify your log</a>
+          <a href="/components">The components</a>
+        </nav>
+        <nav class="footer-col" aria-label="Docs">
+          <h3>Docs</h3>
+          <a href="/docs/security-model">Security model</a>
+          <a href="/docs/format">The log format</a>
+          <a href="https://github.com/unifyWeb3/capsule/blob/main/docs/ENGINEERING-REVIEW.md" rel="noreferrer">Engineering review</a>
+          <a href="https://github.com/unifyWeb3/capsule/blob/main/docs/ARCHITECTURE.md" rel="noreferrer">Architecture</a>
+        </nav>
+        <nav class="footer-col" aria-label="Elsewhere">
+          <h3>Elsewhere</h3>
+          <a href="https://github.com/unifyWeb3/capsule" rel="noreferrer">GitHub</a>
+          <a href="/proof.json">/proof.json</a>
+          <a href="/api/limit-cost">/api/limit-cost</a>
+          <a href="/decision-log.jsonl">/decision-log.jsonl</a>
+          <a href="https://docs.gokite.ai/passport" rel="noreferrer">Kite Passport</a>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 unifyWeb3 · MIT</span>
+        <span>Built with SERV Reasoning and Kite Agent Passport</span>
+        <a href="https://capsule-phi-blond.vercel.app" rel="noreferrer">capsule-phi-blond.vercel.app</a>
+      </div>
+    </footer>
+
+    <script type="module" src="/cost.js"></script>
+  </body>
+</html>

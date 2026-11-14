@@ -1,8 +1,10 @@
 # capsule-mcp
 
-Capsule's spending-record verifier, as an MCP server.
+Capsule's spending-record verifier and its limit calculator, as an MCP server.
 
 Before an agent pays, onboards, or trusts another agent that spends money, it can check that agent's published spending record first. Capsule fetches the record over https, re-reads every payment from Base mainnet, checks the hash chain when the log is in Capsule's format, and prices the refusals. The answer says which half is proof and which half is the owner's claim.
+
+It can also price a spending limit before anyone signs one: given the facts an answer needs and the caps a session would hold, it solves for the cheapest basket of catalog endpoints, names the cap that forbade each one, and prices what was forbidden.
 
 **No wallet. No account. No session. A URL is the credential.**
 
@@ -35,7 +37,7 @@ Any MCP client that speaks stdio. For Claude Desktop, in `claude_desktop_config.
 
 For an agent that talks MCP over stdio, the command is `capsule-mcp` (or `npx -y capsule-mcp`). There is nothing else to configure.
 
-## The two tools
+## The three tools
 
 ### `verify_record`
 
@@ -52,9 +54,27 @@ The answer is a JSON proof: what was bought, what was refused, what the limit co
 
 Capsule's own recorded run, with every payment re-read from the chain at call time. No arguments.
 
+### `price_my_limit`
+
+Prices what a set of caps costs for a set of facts.
+
+| argument | type | meaning |
+| --- | --- | --- |
+| `facts` | array of strings, optional | the facts the answer needs. Omit to price Capsule's own recorded run. |
+| `per_tx_usd` | number, optional | the most one call may cost. Defaults to the recorded run's $0.002. |
+| `total_usd` | number, optional | the most the session may spend in total. Defaults to the recorded run's $0.0025. |
+
+The solver is exact: it enumerates the subsets of the facts, costs the cheapest catalog endpoint that covers each one, takes the basket that fits inside the caps, and reports what is left over. No model is in the loop, so the same inputs always give the same answer.
+
+Two kinds of cover, and the answer says which is which: a **demonstrated** cover is an endpoint the record already shows being chosen for that fact, with its price and transaction; a **declared** cover is one whose own catalog text claims the fact. A fact no merchant claims is reported as unpriced, never guessed.
+
+With no arguments it prices the recorded run: $0.051 of refused evidence against a $0.0025 budget, 20.4 times over, with the per-call cap stopping one fact and the total budget stopping another.
+
 ## What it does not prove
 
 The refusals are the record owner's claim, because a refusal leaves no transaction. The payments are chain-verified. The hash chain is checked only when the log is in Capsule's format. This is the same asymmetry the web verifier states, and it is deliberate.
+
+A cover in the calculator is either demonstrated or declared. A declared cover is the merchant's own catalog text, not a purchase, and the catalog it is priced against is a snapshot, so its prices are the prices of that day.
 
 ## Environment
 
@@ -63,6 +83,7 @@ Nothing is required. `BASE_RPC_URL` is optional and overrides the public Base RP
 ## Links
 
 - Live verifier: <https://capsule-phi-blond.vercel.app/verify>
+- The limit calculator: <https://capsule-phi-blond.vercel.app/cost>
 - Repository: <https://github.com/unifyWeb3/capsule>
 - The log format, with a writer you can copy: <https://capsule-phi-blond.vercel.app/docs/format>
 

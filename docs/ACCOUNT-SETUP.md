@@ -129,10 +129,10 @@ Use the second. It costs **$0.30 of USDC.e**, and the run spends $0.25 of it.
 
 ## E. The X post
 
-Posting is required and the post must tag **@openservai**. The exact post is in
-`docs/SUBMISSION.md`: one post of 265 characters, which fits X's limit. You publish
-it and send me the URL. The form needs the URL as a required field, and it takes one
-URL, so one post is enough.
+**Done.** The post is published and it tags **@openservai**:
+`https://x.com/oxunify/status/2121633772202602884`. The form's field 9 takes that
+URL. The post is one message of 265 characters, which fits X's limit; the optional
+replies in the same thread are in `docs/SUBMISSION.md`.
 
 ## F. The account KYC: Kite is reviewing it
 
@@ -239,6 +239,58 @@ between a priced claim and a proven one.
 and the write-up are honest about it, and the README already says the host is not
 allowlisted. The review is the one thing on this list that no amount of our work
 can hurry.
+
+## H. Publishing `capsule-mcp` to npm
+
+The package is built, guarded and rehearsed. The only thing left is npm's
+two-factor policy, which is the error you hit:
+
+```
+npm error code E403
+npm error 403 Forbidden - PUT https://registry.npmjs.org/capsule-mcp - Two-factor
+npm error authentication or granular access token with bypass 2fa enabled is required
+```
+
+That is npm refusing the publish because the account has no second factor on the
+write. The package name is still free (`capsule-mcp` answers 404), so nothing was
+consumed and nothing needs cleaning up.
+
+**Path A, an authenticator app (about two minutes).**
+
+1. Open <https://www.npmjs.com/settings/access-tokens> and enable two-factor
+   authentication with an authenticator app.
+2. Publish with the six-digit code it shows:
+
+   ```bash
+   cd /home/unify/serv
+   npm_config_otp=123456 npm run mcp:pack
+   ```
+
+   The code changes every thirty seconds, so use the current one. `npm publish
+   --otp 123456 ./packages/capsule-mcp` does the same thing if you would rather not
+   go through the script.
+
+**Path B, a granular token with bypass 2FA (one time, no code afterwards).**
+
+1. Open <https://www.npmjs.com/settings/access-tokens> and generate a token with
+   read and write access to packages, and **bypass 2FA** ticked.
+2. Put it in `~/.npmrc`:
+
+   ```
+   //registry.npmjs.org/:_authToken=npm_xxxxxxxxxxxxxxxx
+   ```
+
+3. `cd /home/unify/serv && npm run mcp:pack`. No code is asked for.
+
+Either way, check it landed:
+
+```bash
+npm view capsule-mcp version      # expect 0.1.0
+npx -y capsule-mcp                # the server starts and waits for MCP input
+```
+
+The publish runs `npm run mcp:build` first, so the tarball that goes out is always
+the current code, and the guard refuses to publish if the build is incomplete.
 
 ---
 

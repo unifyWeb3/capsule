@@ -8,6 +8,7 @@
 import { readReceipts } from "../src/proof.js";
 import { buildProof } from "../src/build-proof.js";
 import { verifyPublishedLog, type PublishedProof } from "../src/verify-log.js";
+import { priceLimit } from "../src/limit-api.js";
 
 /** Capsule's own published record, with the chain re-read at call time. */
 export async function getProof(): Promise<Record<string, unknown>> {
@@ -52,4 +53,56 @@ export async function verifyRecord(input: {
     budgetUsd = parsed;
   }
   return verifyPublishedLog(logUrl, { budgetUsd });
+}
+
+/**
+ * What a set of caps costs.
+ *
+ * The solver prices the facts an answer needs against the caps a session
+ * holds, over the catalog snapshot this package carries, and returns the
+ * cheapest basket, what the caps forbade and what the forbidden part would
+ * have cost. With no facts it prices the recorded run, which is the number
+ * the project publishes.
+ *
+ * A cover is either demonstrated (the record shows the endpoint being chosen
+ * for the fact) or declared (the merchant's own catalog text claims it), and
+ * a fact no merchant claims is reported as unpriced rather than guessed.
+ */
+export async function priceMyLimit(input: {
+  facts?: unknown;
+  per_tx_usd?: unknown;
+  total_usd?: unknown;
+}): Promise<Record<string, unknown>> {
+  const facts: string[] = [];
+  if (Array.isArray(input.facts)) {
+    for (const fact of input.facts) {
+      if (typeof fact !== "string") continue;
+      const trimmed = fact.trim();
+      if (trimmed) facts.push(trimmed);
+    }
+  } else if (typeof input.facts === "string") {
+    for (const part of input.facts.split(",")) {
+      const trimmed = part.trim();
+      if (trimmed) facts.push(trimmed);
+    }
+  } else if (input.facts !== undefined && input.facts !== null) {
+    throw new Error("facts must be an array of strings");
+  }
+
+  const number = (value: unknown, name: string): number | undefined => {
+    if (value === undefined || value === null) return undefined;
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      throw new Error(
+        `${name} must be a finite, non-negative number of dollars, e.g. 0.0025`,
+      );
+    }
+    return parsed;
+  };
+
+  return (await priceLimit({
+    facts: facts.length ? facts : undefined,
+    perTxUsd: number(input.per_tx_usd, "per_tx_usd"),
+    totalUsd: number(input.total_usd, "total_usd"),
+  })) as unknown as Record<string, unknown>;
 }

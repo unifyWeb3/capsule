@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Capsule MCP — the verifier as an agent tool.
+ * Capsule MCP — the verifier and the limit calculator as agent tools.
  *
  * An MCP client (an agent orchestrator, an IDE, Claude Desktop, a Kite agent
- * with tool-calling) gets two tools and nothing else: read Capsule's own
- * proof, or check anybody's published spending record. No wallet, no account,
- * no session — a URL is the credential.
+ * with tool-calling) gets three tools and nothing else: read Capsule's own
+ * proof, check anybody's published spending record, or price a spending limit.
+ * No wallet, no account, no session — a URL is the credential.
  *
  *   verify_record(log_url, budget_usd?)
  *     → the published proof: payments re-read from the chain, the hash chain
@@ -15,12 +15,16 @@
  *   get_proof()
  *     → this deployment's own recorded run, with the chain re-read at call time
  *
+ *   price_my_limit(facts?, per_tx_usd?, total_usd?)
+ *     → what a set of caps costs: the cheapest basket that covers the facts,
+ *       what the caps forbade, and the price of what was forbidden
+ *
  * Run it:  npm run mcp
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { getProof, verifyRecord } from "./tools.js";
+import { getProof, priceMyLimit, verifyRecord } from "./tools.js";
 
 function asText(payload: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }] };
@@ -31,7 +35,7 @@ const server = new McpServer(
   {
     capabilities: { tools: {} },
     instructions:
-      "Use verify_record before paying, onboarding or trusting an agent that spends money: it re-reads the record's payments from the chain and says exactly which halves are proof and which are the owner's claim. Use get_proof for Capsule's own recorded run.",
+      "Use verify_record before paying, onboarding or trusting an agent that spends money: it re-reads the record's payments from the chain and says exactly which halves are proof and which are the owner's claim. Use get_proof for Capsule's own recorded run. Use price_my_limit when an agent asks what its spending cap costs: it solves for the cheapest basket of catalog endpoints that covers the facts, names the cap that forbade each one, and prices what was forbidden.",
   },
 );
 
@@ -90,6 +94,48 @@ server.registerTool(
           {
             type: "text" as const,
             text: `could not read the proof: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  },
+);
+
+server.registerTool(
+  "price_my_limit",
+  {
+    title: "Price a spending limit",
+    description:
+      "Price what a spending limit costs. Given the facts an answer needs and the caps a session holds (a per-call cap and a total budget), it solves for the cheapest basket of catalog endpoints that covers those facts, reports which cap forbade what, and prices what was forbidden. With no facts it prices Capsule's own recorded run: $0.051 of evidence against a $0.0025 budget, 20.4 times over. A cover is either demonstrated (the record shows the endpoint chosen for the fact) or declared (the merchant's catalog text claims it); a fact no merchant claims is reported as unpriced, never guessed.",
+    inputSchema: {
+      facts: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'The facts the answer needs, e.g. ["current ETH price and 24h change", "volatility and drawdown"]. Omit to price the recorded run.',
+        ),
+      per_tx_usd: z
+        .number()
+        .nonnegative()
+        .optional()
+        .describe("The most one call may cost, in dollars. Defaults to the recorded run's $0.002."),
+      total_usd: z
+        .number()
+        .nonnegative()
+        .optional()
+        .describe("The most the session may spend in total, in dollars. Defaults to the recorded run's $0.0025."),
+    },
+  },
+  async ({ facts, per_tx_usd, total_usd }) => {
+    try {
+      return asText(await priceMyLimit({ facts, per_tx_usd, total_usd }));
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `could not price that limit: ${error instanceof Error ? error.message : String(error)}`,
           },
         ],
         isError: true,

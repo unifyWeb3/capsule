@@ -13,7 +13,7 @@ optional replies in the same thread if you want the evidence and the tool mentio
 
 Your agent asked for $0.05 of market data. Your budget was $0.0025 and your
 per-call cap was $0.002. The Passport refused it: over the per-call cap, and
-**20× your entire budget**. Nobody knew, because nothing else records what an agent
+**20.4× your entire budget**. Nobody knew, because nothing else records what an agent
 was *refused*, at the real price, against the budget the user signed with a passkey.
 
 Refusals decided by your Kite Passport session, not by the agent.
@@ -33,8 +33,8 @@ run's receipts. If a number here disagrees with that file, that file is right.
 | 6 | What is your project called? | yes | **Capsule** |
 | 7 | Tell us about your project | yes | the write-up below |
 | 8 | URL for your project | yes | `https://capsule-phi-blond.vercel.app` |
-| 9 | X post URL | yes | *paste after posting* (one post is enough) |
-| 10 | One additional project URL | no | the YouTube link for the 90-second video |
+| 9 | X post URL | yes | `https://x.com/oxunify/status/2121633772202602884` | published, tagging `@openservai` | done |
+| 10 | One additional project URL | no | `https://youtu.be/nT8bjhT7WYY` | the 90-second demo video | done |
 | 11 | Project logo or icon | no | `https://capsule-phi-blond.vercel.app/logo.svg` |
 | 12 | Is data collection enabled for your project? | yes | **Yes**: enabled at `console.openserv.ai/settings/organization` |
 | 13 | Which best describes your team? | yes | *I'm participating solo* |
@@ -49,9 +49,9 @@ run's receipts. If a number here disagrees with that file, that file is right.
 
 **About field 10.** The event's FAQ asks for "a public code repository, a demo link
 or video, and a short write-up". The demo link is field 8 and the write-up is field
-7, so field 10 is where the video goes: the YouTube URL once it is uploaded. The
+7, so field 10 is where the video goes: `https://youtu.be/nT8bjhT7WYY`. The
 repository is public and is linked from the site and from the post, so nothing is
-lost if the video is the additional URL.
+lost.
 
 **About field 11.** The logo is one SVG, and every surface points at it: the header
 and footer on all eight pages, the favicon, the touch icon, and the share card.
@@ -63,7 +63,7 @@ and footer on all eight pages, the favicon, the touch icon, and the share card.
 >
 > Your agent asked for **$0.05** of market data. Your budget was **$0.0025** and
 > your per-call cap was **$0.002**. The Passport refused it: over the per-call cap,
-> and **20× your entire budget**. Nobody knew, because nothing else records what an
+> and **20.4× your entire budget**. Nobody knew, because nothing else records what an
 > agent was *refused*, at the real price, against the budget the user signed with a
 > passkey.
 >
@@ -92,10 +92,22 @@ and footer on all eight pages, the favicon, the touch icon, and the share card.
 > chain, reads every payment off the chain, and answers what was really bought, what
 > was refused and what the limit cost. Nothing is stored. `GET /verify?log=<url>`.
 >
-> **It is a tool, not only a page.** The same verifier is published on npm as
-> `capsule-mcp` (`npx -y capsule-mcp`), so an agent can check a published spending
-> record before it trusts one. No wallet, no account, no session: the URL of the log
-> is the credential.
+> **And you can price a limit before you sign one.** The measurement was the hard
+> part; the calculator is where it turned into a product. `GET /cost` takes the facts
+> an answer needs and a pair of caps, solves for the cheapest basket of catalog
+> endpoints that fits inside them, names the cap that forbade each one, and prices
+> what was forbidden. The solver is exact enumeration over fact subsets, with no
+> model in the loop, and the recorded run is its regression test: given the same
+> catalog snapshot it arrives at the same **$0.051** and the same **20.4×**. A cover
+> is either demonstrated (the record shows the endpoint being chosen for that fact)
+> or declared (the merchant's own catalog text claims it), and a fact no merchant
+> sells is left unpriced rather than guessed.
+>
+> **It is a tool, not only a page.** The same verifier and the same calculator are
+> published on npm as `capsule-mcp` (`npx -y capsule-mcp`), so an agent can check a
+> published spending record before it trusts one, or price its own limits before it
+> asks for a session. No wallet, no account, no session: the URL of the log is the
+> credential.
 >
 > The record has three independent anchors. The refusals were decided by the
 > Passport, not by us. The payments are transactions on Base, re-read from the chain
@@ -115,8 +127,9 @@ and footer on all eight pages, the favicon, the touch icon, and the share card.
 
 ## The X post (one post is enough)
 
-Publish this as a single post, then paste its URL into field 9. It is 265
-characters, so it fits a free X account.
+**Done.** The post is published and it tags **@openservai**:
+`https://x.com/oxunify/status/2121633772202602884`. The copy below is what was
+posted; the two replies are optional and were not needed for the form.
 
 > @openservai Capsule for #SERVHackathon 02, Kite track.
 >
@@ -145,10 +158,16 @@ Reply 2, the tool (185 characters):
 > published spending record before it trusts one. No wallet, no account, no session.
 > The URL is the credential.
 
+Reply 3, the calculator, if you want to add it (224 characters):
+
+> What does a spending limit cost before you sign it? /cost prices it: the facts your
+> answer needs, your caps, the cheapest basket of catalog endpoints, and what each cap
+> forbade. Same solver, same numbers: $0.051 against a $0.0025 budget, 20.4x.
+
 ## The 90-second video: three beats, shot list
 
-The video has been recorded and needs uploading. Nothing below needs a key, an
-account, or a setup.
+**Published**: `https://youtu.be/nT8bjhT7WYY`. The shot list below is what it was cut
+from, kept so the numbers in the video can be checked against the record.
 
 | Time | The screen | What you say | What the camera shows |
 | --- | --- | --- | --- |
@@ -162,21 +181,26 @@ account, or a setup.
 with the numbers in the table above. If a number on screen is not the number above,
 stop and fix it: a video with a stale number is worse than no video.
 
-## Before you post
+## Before you submit
 
-- [ ] Tag **@openservai** in the post.
-- [ ] Attach a screenshot or a short clip of the two refusals: the event asks for
+- [x] Tag **@openservai** in the post.
+- [x] Attach a screenshot or a short clip of the two refusals: the event asks for
       images.
-- [ ] Publish the post, then paste its URL into field 9.
-- [ ] Upload the video to YouTube, then paste its URL into field 10.
+- [x] Publish the post, then paste its URL into field 9. **Done:**
+      `https://x.com/oxunify/status/2121633772202602884`
+- [x] Upload the video to YouTube, then paste its URL into field 10. **Done:**
+      `https://youtu.be/nT8bjhT7WYY`
 - [ ] `npm view capsule-mcp version` answers `0.1.0`. If the publish has not
       happened yet, cut the `capsule-mcp` sentence from the write-up in field 7 and
       from reply 2.
+- [ ] The live deployment serves the new `/cost` page. The code is pushed; the
+      deployment is one click in the Vercel dashboard (or one `create_deployment`
+      from the pushed commit). Until then, `/cost` is in the repository and not on
+      the live site, so the write-up's calculator paragraph is a claim about the
+      repository. Deploy first, then submit.
 
 ## Still open
 
-- The video upload: the video is recorded, and its link goes in field 10.
-- The X post: one post, drafted above. It needs an X account.
 - The stranger test: give somebody the `/verify` URL and watch them use it without
   help. Nobody has done this but us, and it is the one thing that would prove "user
   readiness" instead of asserting it.
@@ -186,6 +210,13 @@ stop and fix it: a video with a stale number is worse than no video.
 
 ## Done since the last version of this pack
 
+- The **limit calculator**: `/cost` prices a set of caps for a set of facts over the
+  same catalog snapshot the run used, with an exact solver and the recorded run as
+  its regression test. The same answer is `GET /api/limit-cost` and the
+  `price_my_limit` tool in `capsule-mcp`.
+- The **90-second video is published**: `https://youtu.be/nT8bjhT7WYY`.
+- The **X post is published**, one post tagging `@openservai`:
+  `https://x.com/oxunify/status/2121633772202602884`.
 - The contrast run: the same task under a $0.10 budget, showing the agent completing
   the $0.05 purchase it was refused before. It is on `/runs` and in the receipts.
 - The third-party path: `GET /verify?log=<url>` verifies **anyone's** published record,

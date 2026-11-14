@@ -115,7 +115,13 @@ export function bestEndpointForFact(
   return scored[0]?.entry ?? null;
 }
 
-const STOP_WORDS = new Set([
+/**
+ * The words that carry no meaning when matching a fact to an endpoint.
+ *
+ * One list, used by the agent's shortlist and by the calculator, so the two
+ * agree about what "could answer this" means.
+ */
+export const STOP_WORDS = new Set([
   "and",
   "the",
   "for",

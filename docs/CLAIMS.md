@@ -12,6 +12,10 @@ into prose that is not in this file.
 | Purchases the session refused | 2 | the decision log | `npm run demo` | 2026-11-12 |
 | Settlement network | eip155:8453 (USDC) | the x402 challenge the merchant returned | `npm run demo` | 2026-11-12 |
 | What the limit cost | $0.051 against a $0.0025 budget (20.4x) | the refused attempts in the decision log, priced | `npm run receipts` | 2026-11-12 |
+| What the limit cost, priced by the solver | $0.051 against a $0.0025 budget (20.4x) | the solver over the same catalog snapshot, checked against the recorded run by the test suite | `npm test` | 2026-11-11 |
+| Facts no merchant in the catalog claims | 1 | the solver's coverage rule, over the catalog snapshot | `npm test` | 2026-11-11 |
+| Endpoints in the catalog snapshot | 29 | the live Kite service catalog, snapshotted into docs/menu.json | `npm run menu` | 2026-11-11 |
+| Facts the recorded run needed | 5 | the counterfactual in the decision log | `npm run receipts` | 2026-11-12 |
 | Decision log algorithm | keccak-256 | the log's own header | `npm run verify` | 2026-11-12 |
 | Decision log records | 4 | the log | `npm run verify` | 2026-11-12 |
 | Decision log head | 0xd6af6f6b610a8f1410ed38ea66742a3bd772fbc05543164c51f8779655c08839 | the log | `npm run verify` | 2026-11-12 |

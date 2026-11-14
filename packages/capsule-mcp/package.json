@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "capsule-mcp": "./bin/capsule-mcp.mjs"
+    "capsule-mcp": "bin/capsule-mcp.mjs"
   },
   "files": [
     "bin",

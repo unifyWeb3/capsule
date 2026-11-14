@@ -30,13 +30,17 @@ need("bin/capsule-mcp.mjs", "the published executable");
 need("dist/mcp/server.js", "the compiled MCP server");
 need("dist/mcp/tools.js", "the compiled tool handlers");
 need("dist/docs/receipts.json", "the recorded run's receipts, read by get_proof at run time");
+need("dist/docs/menu.json", "the catalog snapshot, read by price_my_limit at run time");
 need("LICENSE", "the licence the manifest claims");
 
 // Every module the server reaches, compiled into the same tree.
 const MODULES = [
   "src/build-proof.js",
   "src/chains.js",
+  "src/limit-api.js",
+  "src/limit-cost.js",
   "src/log.js",
+  "src/menu.js",
   "src/net.js",
   "src/normalize.js",
   "src/paths.js",
@@ -60,6 +64,7 @@ const allowed = new Set([
   path.join("dist", "mcp", "server.js"),
   path.join("dist", "mcp", "tools.js"),
   path.join("dist", "docs", "receipts.json"),
+  path.join("dist", "docs", "menu.json"),
 ]);
 const walk = (dir) => {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -7,8 +7,11 @@
  */
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { type Receipts } from "../src/proof.js";
+import { type Receipts, readReceipts } from "../src/proof.js";
 import { REPO_ROOT } from "../src/paths.js";
+import { loadMenu } from "../src/menu.js";
+import { planLimit } from "../src/limit-cost.js";
+import { attemptsFrom } from "../src/limit-api.js";
 
 async function main() {
   const receiptsPath = path.join(REPO_ROOT, "docs", "receipts.json");
@@ -23,6 +26,44 @@ async function main() {
   const paid = receipts.steps.filter((step) => step.outcome === "paid");
   const refused = receipts.steps.filter((step) => step.outcome === "refused");
   const today = receipts.generated_at.slice(0, 10);
+  // The date the catalog was read. It is a property of the snapshot, not of
+  // the day this file was generated, so the registry is the same file
+  // everywhere and the drift gate does not depend on the clock.
+  let snapshotDate = today;
+
+  // The solver's own answer, over the catalog snapshot. It is a second route
+  // to the number the record measured, and the test suite fails if the two
+  // ever disagree.
+  let solved: {
+    limitCostUsd: number;
+    budgetUsd: number;
+    multiplier: number;
+    unpricedFacts: string[];
+  } | null = null;
+  let endpointCount = 0;
+  try {
+    const menu = await loadMenu();
+    endpointCount = menu.endpoints.length;
+    snapshotDate = menu.generated_at.slice(0, 10);
+    const plan = planLimit({
+      facts: receipts.counterfactual.facts.map((row) => row.fact),
+      caps: {
+        perTxUsd: Number(receipts.session.max_amount_per_tx),
+        totalUsd: Number(receipts.session.max_total_amount),
+      },
+      menu,
+      demonstrated: attemptsFrom(receipts),
+    });
+    solved = {
+      limitCostUsd: plan.limitCostUsd,
+      budgetUsd: plan.budgetUsd,
+      multiplier: plan.multiplier,
+      unpricedFacts: plan.unpricedFacts,
+    };
+  } catch {
+    // A missing catalog leaves the claims as they were; the gate below still
+    // fails if the README quotes a number the registry does not have.
+  }
 
   const rows: string[] = [];
   const add = (
@@ -77,6 +118,37 @@ async function main() {
     "What the limit cost",
     `$${receipts.counterfactual.cost_usd} against a $${receipts.counterfactual.budget_usd} budget (${receipts.counterfactual.budget_multiplier}x)`,
     "the refused attempts in the decision log, priced",
+    "npm run receipts",
+  );
+  if (solved) {
+    add(
+      "What the limit cost, priced by the solver",
+      `$${solved.limitCostUsd} against a $${solved.budgetUsd} budget (${solved.multiplier}x)`,
+      "the solver over the same catalog snapshot, checked against the recorded run by the test suite",
+      "npm test",
+      snapshotDate,
+    );
+    add(
+      "Facts no merchant in the catalog claims",
+      String(solved.unpricedFacts.length),
+      "the solver's coverage rule, over the catalog snapshot",
+      "npm test",
+      snapshotDate,
+    );
+  }
+  if (endpointCount) {
+    add(
+      "Endpoints in the catalog snapshot",
+      String(endpointCount),
+      "the live Kite service catalog, snapshotted into docs/menu.json",
+      "npm run menu",
+      snapshotDate,
+    );
+  }
+  add(
+    "Facts the recorded run needed",
+    String(receipts.counterfactual.facts.length),
+    "the counterfactual in the decision log",
     "npm run receipts",
   );
   add(

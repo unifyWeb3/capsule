@@ -34,6 +34,16 @@ if (!fs.existsSync(receipts)) {
 fs.mkdirSync(path.join(DIST, "docs"), { recursive: true });
 fs.copyFileSync(receipts, path.join(DIST, "docs", "receipts.json"));
 
+// `price_my_limit` prices a set of facts over the catalog snapshot, so the
+// snapshot travels with the package too. It is the same file the deployment
+// uses, so both answer with the same prices.
+const menu = path.join(ROOT, "docs", "menu.json");
+if (!fs.existsSync(menu)) {
+  console.error(`missing ${path.relative(ROOT, menu)}; the package needs it`);
+  process.exit(1);
+}
+fs.copyFileSync(menu, path.join(DIST, "docs", "menu.json"));
+
 // The license travels with the package.
 fs.copyFileSync(path.join(ROOT, "LICENSE"), path.join(PKG, "LICENSE"));
 
