@@ -1,0 +1,51 @@
+{
+  "name": "capsule-mcp",
+  "version": "0.1.0",
+  "description": "Capsule's spending-record verifier as an MCP server: check any agent's published spending record, payments re-read from the chain. No wallet, no account, no session.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "capsule-mcp": "./bin/capsule-mcp.mjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "x402",
+    "kite",
+    "agent",
+    "audit",
+    "verifier",
+    "base",
+    "usdc",
+    "payments"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unifyWeb3/capsule.git",
+    "directory": "packages/capsule-mcp"
+  },
+  "homepage": "https://capsule-phi-blond.vercel.app",
+  "bugs": {
+    "url": "https://github.com/unifyWeb3/capsule/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "viem": "^2.48.11",
+    "zod": "^4.6.7"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepublishOnly": "node scripts/check-build.mjs"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "packages/capsule-mcp/dist",
+    "rootDir": ".",
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": [
+    "mcp/**/*.ts",
+    "src/build-proof.ts",
+    "src/chains.ts",
+    "src/log.ts",
+    "src/net.ts",
+    "src/normalize.ts",
+    "src/paths.ts",
+    "src/proof.ts",
+    "src/units.ts",
+    "src/verify-log.ts"
+  ]
+}

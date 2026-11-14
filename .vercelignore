@@ -13,4 +13,5 @@
 *.key
 audit.md
 capsule-blueprint.md
+packages/
 *:Zone.Identifier
