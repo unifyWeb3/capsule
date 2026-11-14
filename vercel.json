@@ -11,6 +11,7 @@
     { "source": "/run.html", "destination": "/run", "statusCode": 301 },
     { "source": "/replay.html", "destination": "/replay", "statusCode": 301 },
     { "source": "/verify.html", "destination": "/verify", "statusCode": 301 },
+    { "source": "/cost.html", "destination": "/cost", "statusCode": 301 },
     { "source": "/components.html", "destination": "/components", "statusCode": 301 },
     { "source": "/docs/format.html", "destination": "/docs/format", "statusCode": 301 },
     { "source": "/docs/security-model.html", "destination": "/docs/security-model", "statusCode": 301 }
