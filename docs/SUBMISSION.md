@@ -115,7 +115,7 @@ and footer on all eight pages, the favicon, the touch icon, and the share card.
 
 ## The X post (one post is enough)
 
-Publish this as a single post, then paste its URL into field 9. It is 264
+Publish this as a single post, then paste its URL into field 9. It is 265
 characters, so it fits a free X account.
 
 > @openservai Capsule for #SERVHackathon 02, Kite track.

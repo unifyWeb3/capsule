@@ -127,7 +127,7 @@ Additional requirements not captured by a form field:
 | Track is Kite | yes | |
 | Public repository | **yes** | `github.com/unifyWeb3/capsule`, public (`private: false`) |
 | Demo link or video | **yes, in two places** | The live app is the demo link: `https://capsule-phi-blond.vercel.app`. The 90-second video is recorded and goes in field 10 once it is uploaded to YouTube |
-| X post tagging @openservai | **no** | Needs the user's X account. One post is drafted in `docs/SUBMISSION.md`, 264 characters, tagging `@openservai` |
+| X post tagging @openservai | **no** | Needs the user's X account. One post is drafted in `docs/SUBMISSION.md`, 265 characters, tagging `@openservai` |
 | The MCP verifier is installable by a judge | **yes, pending the publish** | `packages/capsule-mcp/`: the tarball installs into a clean directory, the binary completes an MCP handshake, both tools answer against the live record. The name `capsule-mcp` is free on npm; the publish needs the user's npm login |
 | Submissions close Nov 15 2026 23:59 UTC | — | about 31 hours from the re-score |
 
@@ -222,7 +222,7 @@ and on the one thing that is still blocked on somebody else, the allowlist.
 | Kite Passport signup + passkey + funded wallet | user | day 1 | **done** — the session funded and spent $0.002 of the user's $1 |
 | Kite account KYC | Kite | before the allowlist clears | **pending** — submitted 2026-11-11, `kpass onboarding status` reports `pending` with no reason given. Nothing to do but wait, and to reply if Kite asks; a verified record is immutable and cannot be edited later |
 | Our host on the Passport allowlist, so x402 settlement can execute | Kite | before submission | **open, not rejected** — the catalog record says "Added via GOK-557 (host_not_allowlisted review)": a review in progress. One message to Kite with the receiving address and the agent DID puts it in front of the reviewer. The 402 challenge is verified; settlement has never executed |
-| X account able to post tagging @openservai | user | day 3 | **theirs** — one post is drafted in `docs/SUBMISSION.md`, 264 characters, tagging `@openservai` |
+| X account able to post tagging @openservai | user | day 3 | **theirs** — one post is drafted in `docs/SUBMISSION.md`, 265 characters, tagging `@openservai` |
 | The 90-second demo video | user | day 3 | **recorded** — the upload to YouTube is theirs, and the link goes in field 10 |
 | Publishing `capsule-mcp` to npm | user | day 3 | **blocked on npm login** — the package is built, guarded and rehearsed; `npm run mcp:pack` does the rest once the CLI is logged in |
 | The stranger test — somebody else uses `/verify` unaided | user | day 4 | **not started** — the cheapest remaining evidence, 30 minutes |
