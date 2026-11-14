@@ -147,7 +147,7 @@ header { padding: 34px 0 8px; }
   text-decoration: none;
   margin-bottom: 0;
 }
-.wordmark svg { width: 26px; height: 26px; }
+.wordmark img { width: 26px; height: 26px; display: block; }
 
 .site-nav {
   display: flex;
@@ -761,6 +761,7 @@ table.checks td.wrap { font-family: var(--sans); color: var(--ink-2); }
   gap: 44px 36px;
 }
 .wordmark-light { color: #ece8dd; font-size: 0.9rem; margin: 0; }
+.footer-brand .wordmark img { width: 22px; height: 22px; }
 .footer-tag {
   margin: 16px 0 6px;
   color: #ece8dd;

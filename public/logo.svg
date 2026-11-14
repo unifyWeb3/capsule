@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!--
+    The Capsule mark.
+
+    One file for every surface: the header, the footer, the favicon, the
+    touch icon and the share card all point here, so there is one logo and
+    not several.
+
+    A pill capsule, tilted 45 degrees, split into two halves by a thin seam.
+    The colors are the site's own: the tile is the ink, one half is the
+    accent, the other is the lighter tone of the same accent.
+  -->
+  <defs>
+    <clipPath id="capsule">
+      <rect x="5" y="10.5" width="22" height="11" rx="5.5" />
+    </clipPath>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="#1b1a17" />
+  <g transform="rotate(-45 16 16)">
+    <rect x="5" y="10.5" width="22" height="11" rx="5.5" fill="#5cc3b2" />
+    <g clip-path="url(#capsule)">
+      <rect x="5" y="10.5" width="10.5" height="11" fill="#0c6a5d" />
+    </g>
+    <rect x="15.5" y="10.5" width="1" height="11" fill="#1b1a17" />
+  </g>
+</svg>
