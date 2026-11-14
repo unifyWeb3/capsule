@@ -308,45 +308,55 @@ export function createApp(config: AppConfig = readConfig()) {
   });
 
   /**
-   * The pages that have their own address.
+   * The pages, at the addresses a reader would say out loud.
    *
-   * The documents themselves are served from the edge; these are the clean
-   * URLs that point at them.
+   * The documents are files; the addresses are not. Each page is served at a
+   * clean path, and the file it comes from never appears in the address bar.
+   * The old `.html` addresses redirect here, permanently, with the query
+   * string carried across — "?id=recorded" and "?log=..." are how a reader
+   * asks for a run or somebody else's record, and losing them on the way
+   * would quietly change what the page shows.
    */
   const PAGES: Record<string, string> = {
-    "/runs": "/runs.html",
-    "/components": "/components.html",
-    "/docs/security-model": "/docs/security-model.html",
-    "/docs/format": "/docs/format.html",
+    "/": "index.html",
+    "/runs": "runs.html",
+    "/run": "run.html",
+    "/replay": "replay.html",
+    "/components": "components.html",
+    "/docs/format": "docs/format.html",
+    "/docs/security-model": "docs/security-model.html",
   };
-  for (const [from, to] of Object.entries(PAGES)) {
-    app.get(from, (request, response) => {
-      const query = request.originalUrl.includes("?")
-        ? `?${request.originalUrl.split("?")[1]}`
-        : "";
-      response.redirect(`${to}${query}`);
+
+  const queryOf = (request: Request): string =>
+    request.originalUrl.includes("?")
+      ? `?${request.originalUrl.split("?")[1]}`
+      : "";
+
+  // The legacy addresses. 301, not 302: the address has moved for good.
+  for (const [clean, file] of Object.entries(PAGES)) {
+    app.get(`/${file}`, (request, response) => {
+      response.redirect(301, `${clean}${queryOf(request)}`);
     });
   }
-  app.get("/run", (request, response) => {
-    const query = request.originalUrl.includes("?")
-      ? `?${request.originalUrl.split("?")[1]}`
-      : "";
-    response.redirect(`/run.html${query}`);
+  // "/verify.html" is the same page as "/verify", so it moves there too.
+  app.get("/verify.html", (request, response) => {
+    response.redirect(301, `/verify${queryOf(request)}`);
   });
 
-  /**
-   * The page.
-   *
-   * The deployment serves public/ from the edge, so the document itself is
-   * fetched from there rather than shipped inside the function bundle. The
-   * query string is carried across, because "?log=..." is how a reader asks
-   * for somebody else's record.
-   */
-  app.get("/", (request, response) => {
-    const query = request.originalUrl.includes("?")
-      ? `?${request.originalUrl.split("?")[1]}`
-      : "";
-    response.redirect(`/index.html${query}`);
+  // The pages themselves. "/verify" is left out on purpose: it is both the
+  // interactive page and the JSON endpoint, and it decides between them by
+  // what the caller asks for.
+  for (const [clean, file] of Object.entries(PAGES)) {
+    if (clean === "/") continue; // the edge serves the homepage from public/
+    app.get(clean, (_request, response) => {
+      response.sendFile(path.join(PUBLIC_DIR, file));
+    });
+  }
+
+  // The homepage. The edge serves it from public/; this is the same document
+  // for a host that asks the function instead.
+  app.get("/", (_request, response) => {
+    response.sendFile(path.join(PUBLIC_DIR, "index.html"));
   });
 
   /**
@@ -483,15 +493,20 @@ export function createApp(config: AppConfig = readConfig()) {
   });
 
   /**
-   * The third-party path.
+   * The verifier: one address, two answers.
    *
-   * An agent owner publishes their decision log anywhere and hands this link
-   * to whoever needs to see it. We fetch the log, check its hash chain, and
-   * check every payment against the chain, then answer. The owner keeps their
-   * data: nothing is stored here.
+   * The third-party path. An agent owner publishes their decision log
+   * anywhere and hands this link to whoever needs to see it. We fetch the
+   * log, check its hash chain, and check every payment against the chain,
+   * then answer. The owner keeps their data: nothing is stored here.
+   *
+   * A browser that asks for "/verify" gets the page, which shows the check
+   * happening. A caller that asks for JSON gets the proof itself. The old
+   * "/verify.html" address redirects to "/verify", so a link written before
+   * the clean addresses still lands on the right thing.
    *
    * With `format=json` it answers in JSON, which is what the curl example in
-   * the README uses. Without it, it redirects to the interactive trace, so a
+   * the README uses. Without it, it serves the interactive trace, so a
    * reader sees the check happen rather than a blob of JSON.
    */
   app.get("/verify", async (request: Request, response: Response) => {
@@ -501,10 +516,7 @@ export function createApp(config: AppConfig = readConfig()) {
       String(request.headers.accept ?? "").includes("application/json");
 
     if (!wantsJson) {
-      const query = request.originalUrl.includes("?")
-        ? `?${request.originalUrl.split("?")[1]}`
-        : "";
-      return response.redirect(`/verify.html${query}`);
+      return response.sendFile(path.join(PUBLIC_DIR, "verify.html"));
     }
     if (!logUrl) {
       return response.status(400).json({

@@ -239,19 +239,19 @@ export function surfaceProps(proof) {
       kind: "The experiment",
       value: "/runs",
       detail: "The same task under two limits. One variable changed.",
-      href: "/runs.html",
+      href: "/runs",
     },
     {
       kind: "Verify anyone's record",
       value: "/verify",
       detail: "Paste a log URL and watch the check happen.",
-      href: "/verify.html",
+      href: "/verify",
     },
     {
       kind: "What we do not prove",
       value: "/docs/security-model",
       detail: "The refusals are the owner's claim. Here is the whole of it.",
-      href: "/docs/security-model.html",
+      href: "/docs/security-model",
     },
     {
       kind: "Machine-readable proof",
@@ -309,7 +309,7 @@ export function runsProps(data) {
         `$${run.max_amount_per_tx} per call · $${run.budget_usd} in total · session ` +
         `${run.session_id ?? "unknown"}`,
       head: `${(run.log_head ?? "").slice(0, 18)}…`,
-      href: `/run.html?id=${encodeURIComponent(run.id)}`,
+      href: `/run?id=${encodeURIComponent(run.id)}`,
       figures: [
         { value: String(run.payments), label: "settled" },
         { value: String(run.refusals), label: "refused" },

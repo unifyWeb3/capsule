@@ -44,22 +44,22 @@ function findChromium() {
 
 const PAGES = [
   ["00-index", "/"],
-  ["01-runs", "/runs.html"],
-  ["02-run-recorded", "/run.html?id=recorded"],
-  ["03-run-contrast", "/run.html?id=contrast"],
-  ["04-verify-empty", "/verify.html"],
+  ["01-runs", "/runs"],
+  ["02-run-recorded", "/run?id=recorded"],
+  ["03-run-contrast", "/run?id=contrast"],
+  ["04-verify-empty", "/verify"],
   [
     "05-verify-trace",
-    "/verify.html?log=" + encodeURIComponent(`${base}/decision-log.jsonl`),
+    "/verify?log=" + encodeURIComponent(`${base}/decision-log.jsonl`),
   ],
-  ["06-security-model", "/docs/security-model.html"],
-  ["07-format", "/docs/format.html"],
+  ["06-security-model", "/docs/security-model"],
+  ["07-format", "/docs/format"],
   [
     "08-verify-foreign",
-    "/verify.html?log=" + encodeURIComponent(`${base}/examples/foreign-log.jsonl`),
+    "/verify?log=" + encodeURIComponent(`${base}/examples/foreign-log.jsonl`),
   ],
-  ["09-components", "/components.html"],
-  ["10-replay", "/replay.html"],
+  ["09-components", "/components"],
+  ["10-replay", "/replay"],
 ];
 
 /** The counts that say a page rendered something rather than nothing. */

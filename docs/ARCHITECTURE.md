@@ -465,7 +465,7 @@ the receipts are derived, the head is signed, the chain confirms the money.*
 
 ```
  1  GET /verify?log=https://wherever/the/log.jsonl
-      no `format=json` -> 302 to /verify.html?log=...  src/app.ts:404-415
+      no `format=json` -> the interactive page, served at /verify  src/app.ts
       (the interactive trace, so a reader watches the check happen rather than
        reading a JSON blob — docs/ENGINEERING-REVIEW.md:188)
 
@@ -568,10 +568,15 @@ as a SHA-256 hash, never in the clear.
 **Paid — the merchant.** `GET /v1/snapshot` $0.02, `/v1/history` $0.05, `/v1/deep` $0.10,
 `/v1/briefing` $0.25 (prices from `src/catalog.ts:17-67`). `GET /catalog` is free.
 
-**Redirects (HTML surfaces).** `/` → `/index.html`, `/run` → `/run.html`, `/runs` →
-`/runs.html`, `/proof` → `/`, `/docs/security-model` → `/docs/security-model.html`,
-`/docs/format` → `/docs/format.html`. Each carries the query string across, because
-`?log=` is how a reader asks for somebody else's record (`src/app.ts:274-287`).
+**Addresses (HTML surfaces).** The pages are served at clean addresses: `/`, `/runs`,
+`/run`, `/replay`, `/verify`, `/components`, `/docs/format`, `/docs/security-model`.
+The documents are files on disk; the address never shows the extension. Every legacy
+`.html` address answers 301 to its clean one (`/runs.html` → `/runs`,
+`/index.html` → `/`), carrying the query string across, because `?log=` is how a
+reader asks for somebody else's record and `?id=` is how a reader asks for a run
+(`src/app.ts`, and the edge rules in `vercel.json`). `/proof` → `/`. `/verify` answers
+both ways: a browser gets the interactive page, a caller that asks for JSON gets the
+proof.
 
 ### 4.2 The error envelope
 

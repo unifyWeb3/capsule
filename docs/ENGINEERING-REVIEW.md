@@ -274,8 +274,8 @@ wrong or left wrong.
 
 | Page | Claimed | Actual |
 | --- | --- | --- |
-| `/run.html`, `/verify.html` | "re-read from the chain when you load this page, **not served from a cached copy**" | `stale-while-revalidate=300` let a shared cache serve the answer for **330 seconds** |
-| `/runs.html` | "**every figure above is re-read from the chain** when this page loads" | `/runs.json` reads the receipts file and **never touches the chain** |
+| `/run`, `/verify` | "re-read from the chain when you load this page, **not served from a cached copy**" | `stale-while-revalidate=300` let a shared cache serve the answer for **330 seconds** |
+| `/runs` | "**every figure above is re-read from the chain** when this page loads" | `/runs.json` reads the receipts file and **never touches the chain** |
 
 The fix is not to make the claim louder. The SWR is gone (the window is 30
 seconds), the proof carries **`checked_at`** — the moment the chain was read,

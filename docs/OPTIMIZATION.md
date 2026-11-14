@@ -91,8 +91,8 @@ Three pages made claims that were not true of the code behind them.
 
 | Page | Claimed | Actual before this pass |
 | --- | --- | --- |
-| `/run.html`, `/verify.html` | "re-read from the chain when you load this page, **not served from a cached copy**" | `stale-while-revalidate=300` let a shared cache serve the answer for **330 seconds** |
-| `/runs.html` | "**every figure above is re-read from the chain** when this page loads" | `/runs.json` reads the receipts file and **never touches the chain** |
+| `/run`, `/verify` | "re-read from the chain when you load this page, **not served from a cached copy**" | `stale-while-revalidate=300` let a shared cache serve the answer for **330 seconds** |
+| `/runs` | "**every figure above is re-read from the chain** when this page loads" | `/runs.json` reads the receipts file and **never touches the chain** |
 
 The fix is not to make the claim louder. It is to make the code match it:
 

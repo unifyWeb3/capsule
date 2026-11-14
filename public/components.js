@@ -180,7 +180,7 @@ const EXAMPLES = [
           label: "The recorded run",
           summary: "$0.002 per call · $0.0025 in total",
           head: "0xd6af6f6b610a…",
-          href: "/run.html?id=recorded",
+          href: "/run?id=recorded",
           figures: [
             { value: "2", label: "settled" },
             { value: "2", label: "refused" },
