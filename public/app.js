@@ -15,7 +15,7 @@ import {
   failed,
   mount,
   showSection,
-} from "./components/index.js";
+} from "./components/library.js";
 import { CostPanel, SubstitutionList, VerificationPanel } from "./components/sections.js";
 import {
   costProps,

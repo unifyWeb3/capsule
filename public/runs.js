@@ -10,7 +10,7 @@
  * of its own.
  */
 import { fetchRuns } from "./lib/api.js";
-import { RunComparison, RunList, failed, mount } from "./components/index.js";
+import { RunComparison, RunList, failed, mount } from "./components/library.js";
 import { runsProps } from "./lib/compose.js";
 
 function render(props) {

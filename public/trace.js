@@ -14,7 +14,7 @@ import {
   failed,
   mount,
   showSection,
-} from "./components/index.js";
+} from "./components/library.js";
 import { VerificationPanel } from "./components/sections.js";
 import { recordProps, traceProps, verificationProps } from "./lib/compose.js";
 

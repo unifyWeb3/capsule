@@ -10,7 +10,7 @@ import {
   SessionBar,
   failed,
   mount,
-} from "./components/index.js";
+} from "./components/library.js";
 import { CostPanel, VerificationPanel } from "./components/sections.js";
 import {
   costProps,

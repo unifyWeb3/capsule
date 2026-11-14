@@ -29,7 +29,7 @@ import {
   html,
   loading,
   mount,
-} from "./components/index.js";
+} from "./components/library.js";
 
 const EXAMPLES = [
   {
