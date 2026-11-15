@@ -255,6 +255,9 @@ That is npm refusing the publish because the account has no second factor on the
 write. The package name is still free (`capsule-mcp` answers 404), so nothing was
 consumed and nothing needs cleaning up.
 
+The account's own profile says so: `npm profile get 2fa --json` answers
+`"tfa": false`. npm 11.19.1 is installed, and it knows both paths.
+
 **Path A, an authenticator app (about two minutes).**
 
 1. Open <https://www.npmjs.com/settings/access-tokens> and enable two-factor
@@ -273,7 +276,16 @@ consumed and nothing needs cleaning up.
 **Path B, a granular token with bypass 2FA (one time, no code afterwards).**
 
 1. Open <https://www.npmjs.com/settings/access-tokens> and generate a token with
-   read and write access to packages, and **bypass 2FA** ticked.
+   read and write access to packages, and **bypass 2FA** ticked. The CLI does the
+   same thing, if you would rather not leave the terminal:
+
+   ```bash
+   npm token create --name capsule-publish --packages capsule-mcp \
+     --packages-and-scopes-permission read-write --bypass-2fa
+   ```
+
+   It prints one token. Treat it as a credential: it belongs in `~/.npmrc` and
+   nowhere else.
 2. Put it in `~/.npmrc`:
 
    ```
