@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "await-approval": "npx tsx scripts/await-approval.ts",
     "menu": "npx tsx scripts/build-menu.ts",
+    "ledger": "node scripts/capture-passport-ledger.mjs",
     "verify": "node --env-file-if-exists=.env --import tsx scripts/verify.ts",
     "audit": "node scripts/audit-pages.mjs",
     "mcp": "node --env-file-if-exists=.env --import tsx mcp/server.ts",

@@ -220,6 +220,41 @@ export function verificationProps(proof) {
 }
 
 /**
+ * The payment network's ledger, checked against the recorded run.
+ *
+ * @param {import("./api.js").Evidence} evidence
+ */
+export function evidenceProps(evidence) {
+  const attempts = evidence.recorded?.attempts ?? [];
+  const money = (value) => `$${Number(value).toFixed(6).replace(/0+$/, "").replace(/\.$/, "")}`;
+  return {
+    capturedAt: evidence.captured_at ?? "",
+    redacted: evidence.redacted ?? [],
+    rows: attempts.map((attempt) => ({
+      fact: attempt.fact,
+      endpoint: attempt.endpoint,
+      price: money(attempt.price_usd),
+      log:
+        attempt.log_outcome === "paid"
+          ? "paid"
+          : `refused${attempt.error_code ? ` (${attempt.error_code})` : ""}`,
+      ledger: attempt.ledger_payment
+        ? `payment recorded${attempt.ledger_tx_hash ? `, tx ${attempt.ledger_tx_hash.slice(0, 12)}…` : ""}`
+        : "no payment recorded",
+      agrees: attempt.agrees,
+      tx: attempt.ledger_tx_hash,
+    })),
+    approval: evidence.recorded?.approval ?? null,
+    totals: {
+      log: money(evidence.recorded?.log_spent_usd ?? 0),
+      ledger: money(evidence.recorded?.ledger_spent_usd ?? 0),
+      agree: evidence.recorded?.totals_agree === true,
+    },
+    control: evidence.summary?.the_refused_endpoint_was_paid_under_the_larger_cap === true,
+  };
+}
+
+/**
  * The surfaces: where a reader can go next.
  *
  * @param {object} proof

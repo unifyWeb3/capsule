@@ -255,3 +255,73 @@ export function VerificationPanel(props) {
       }),
     )}`;
 }
+
+/**
+ * The payment network's own ledger, checked against the recorded run.
+ *
+ * The record above is the owner's account of what its agent did. This panel is
+ * the other account: the one the payment network keeps, which this project did
+ * not write. A refusal shows up in it as the absence of a payment.
+ *
+ * @param {{
+ *   capturedAt: string,
+ *   rows: Array<{fact: string|null, endpoint: string, price: string, log: string, ledger: string, agrees: boolean, tx: string|null}>,
+ *   approval: {occurred_at: string, uv_attested: boolean} | null,
+ *   totals: {log: string, ledger: string, agree: boolean},
+ *   control: boolean,
+ *   redacted: string[],
+ * }} props
+ * @returns {string}
+ */
+export function EvidencePanel(props) {
+  if (!props.rows.length) {
+    return html`<div class="state state-empty">
+      <p>The payment network's ledger has not been captured yet.</p>
+    </div>`;
+  }
+
+  const rows = props.rows.map((row) => [
+    row.fact ?? row.endpoint,
+    row.log,
+    row.ledger,
+    StatusChip({
+      kind: row.agrees ? "verified" : "fault",
+      label: row.agrees ? "the two agree" : "they disagree",
+    }),
+  ]);
+
+  const body = html`${raw(
+    DataTable({
+      head: ["The fact", "Our log", "Kite's ledger", "Cross-check"],
+      rows,
+      columnClass: (index) => (index === 0 ? "wrap" : ""),
+    }),
+  )}
+    <div class="hashline">
+      <b>The cap</b> approved by a passkey on ${props.approval?.occurred_at ?? "an unknown date"}${
+        props.approval?.uv_attested ? " (passkey-attested)" : ""
+      }<br />
+      <b>Spent</b> our log says ${props.totals.log}; the ledger says ${props.totals.ledger}.
+      ${props.totals.agree ? "They agree." : "They do not agree."}
+    </div>
+    <p class="caveat">
+      What this proves: the network that would have been charged has a record of every payment
+      this session made, with its transaction, and no record of being charged for the two the
+      log says were refused. What it does not prove: a refusal is still not an attestation
+      transaction written by the agent, and the ledger is the network's record of its own
+      payments rather than a signed statement about refusals. It was captured on
+      ${props.capturedAt}, and the account's own identifiers were left out
+      (${props.redacted.join(", ")}).
+      ${props.control
+        ? "The control: the same $0.05 endpoint was paid, with a transaction, under the larger cap."
+        : ""}
+    </p>`;
+
+  return html`${raw(
+    Panel({
+      head: "What the payment network's ledger says",
+      note: "read from Kite, not from us",
+      body,
+    }),
+  )}`;
+}

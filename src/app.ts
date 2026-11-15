@@ -24,6 +24,7 @@ import { sellerRouter } from "./seller.js";
 import { readReceipts, type Receipts, type ReceiptStep } from "./proof.js";
 import { buildProof } from "./build-proof.js";
 import { LimitInputError, priceLimit, type CatalogChoice } from "./limit-api.js";
+import { loadLedger, reconcile } from "./ledger.js";
 import { PUBLIC_DIR, REPO_ROOT } from "./paths.js";
 import { allow } from "./rate-limit.js";
 
@@ -353,6 +354,40 @@ export function createApp(config: AppConfig = readConfig()) {
 
   app.get("/proof", (_request, response) => {
     response.redirect("/");
+  });
+
+  /**
+   * The payment network's own ledger, checked against the recorded run.
+   *
+   * The record says which purchases were made and which were refused. This
+   * answers the question the record cannot answer alone: what does the
+   * network that would have been charged say? It holds every x402 payment with
+   * its transaction and every passkey-approved session, so a refusal shows up
+   * as the absence of a payment in a record this project did not write.
+   *
+   * Free, public and cacheable: it reads two files and moves no money.
+   */
+  app.get("/evidence.json", async (_request: Request, response: Response) => {
+    const load = await loadReceipts();
+    if (!load.ok) return receiptsUnavailable(response, load.message);
+    const receipts = load.receipts;
+    response.set("Cache-Control", "public, max-age=60");
+    if (!receipts) {
+      return response.status(200).json({
+        status: "no_run_recorded",
+        message:
+          "No demo run has been recorded yet. The receipts file is written by `npm run demo`.",
+      });
+    }
+    const ledger = await loadLedger();
+    if (!ledger) {
+      return response.status(200).json({
+        status: "no_ledger_captured",
+        message:
+          "The payment network's ledger has not been captured yet. It is written by `npm run ledger`.",
+      });
+    }
+    return response.json(reconcile(receipts, ledger));
   });
 
   /**

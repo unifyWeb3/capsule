@@ -6,19 +6,22 @@
  * know the shape of a proof payload — `lib/compose.js` does — and it does not
  * build markup — `components/` does.
  */
-import { fetchOurProof, fetchPublishedProof, logUrlFromLocation } from "./lib/api.js";
+import { fetchEvidence, fetchOurProof, fetchPublishedProof, logUrlFromLocation } from "./lib/api.js";
 import {
   Callout,
+  EvidencePanel,
   RecordList,
   SessionBar,
   SurfaceGrid,
   failed,
+  html,
   mount,
   showSection,
 } from "./components/library.js";
 import { CostPanel, SubstitutionList, VerificationPanel } from "./components/sections.js";
 import {
   costProps,
+  evidenceProps,
   recordProps,
   sessionProps,
   substitutionProps,
@@ -34,9 +37,10 @@ function asymmetry() {
     body:
       "A payment leaves a transaction, so anyone can re-read it. That is what the table " +
       "below does. A refusal leaves nothing behind: it exists in the signed log and in the " +
-      "Passport's error code, and that is where it stops. " +
-      "That asymmetry is exactly why the refusals are the valuable half and also the unproven " +
-      "half: nothing else records what an agent was refused.",
+      "Passport's error code. The payment network's own ledger says the same thing from the " +
+      "other side, because it holds every payment that session made and no payment for the " +
+      "two that were refused. That is still weaker than an attestation transaction per " +
+      "refusal, and it is the honest place for this to stop.",
   });
 }
 
@@ -58,6 +62,34 @@ function renderAll(proof) {
   mount("verify-body", `${asymmetry()}${VerificationPanel(verificationProps(proof))}`);
 
   mount("surfaces-body", SurfaceGrid(surfaceProps(proof)));
+}
+
+/**
+ * The network's ledger, checked against the record.
+ *
+ * It is a second source, so it is shown next to the first one and labelled as
+ * what it is. If it cannot be read the section says so rather than quietly
+ * showing the log twice.
+ */
+async function renderEvidence() {
+  const slot = document.getElementById("evidence-body");
+  if (!slot) return;
+  try {
+    const evidence = await fetchEvidence();
+    if (!evidence.recorded) {
+      mount(
+        "evidence-body",
+        html`<div class="state state-empty"><p>The payment network's ledger has not been captured yet.</p></div>`,
+      );
+      return;
+    }
+    mount("evidence-body", EvidencePanel(evidenceProps(evidence)));
+  } catch (error) {
+    mount(
+      "evidence-body",
+      html`<div class="state state-empty"><p>The payment network's ledger could not be read: ${error instanceof Error ? error.message : String(error)}</p></div>`,
+    );
+  }
 }
 
 function fail(message) {
@@ -94,6 +126,7 @@ async function main() {
   document.title = "Capsule: your agent's spending record";
   try {
     renderAll(await fetchOurProof());
+    void renderEvidence();
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   }

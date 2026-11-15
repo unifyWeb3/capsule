@@ -162,3 +162,42 @@ export function logUrlFromLocation() {
   const value = new URLSearchParams(window.location.search).get("log");
   return value && value.trim() ? value.trim() : null;
 }
+
+/**
+ * The payment network's own ledger, checked against the recorded run.
+ *
+ * @typedef {object} EvidenceAttempt
+ * @property {string|null} fact
+ * @property {string} endpoint
+ * @property {string} url
+ * @property {number} price_usd
+ * @property {"paid"|"refused"} log_outcome
+ * @property {string|null} error_code
+ * @property {boolean} ledger_payment
+ * @property {string|null} ledger_occurred_at
+ * @property {string|null} ledger_tx_hash
+ * @property {boolean} agrees
+ *
+ * @typedef {object} Evidence
+ * @property {string} source
+ * @property {string} captured_at
+ * @property {string[]} redacted
+ * @property {{attempts: EvidenceAttempt[], approval: object|null, log_spent_usd: number, ledger_spent_usd: number, totals_agree: boolean}} recorded
+ * @property {{attempts: EvidenceAttempt[]}|null} contrast
+ * @property {object} summary
+ */
+
+/**
+ * The network's ledger, checked against the record.
+ *
+ * @returns {Promise<Evidence>}
+ */
+export async function fetchEvidence() {
+  const response = await fetch("/evidence.json", {
+    headers: { accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new ProofError(`the evidence endpoint answered HTTP ${response.status}`);
+  }
+  return (await response.json());
+}
