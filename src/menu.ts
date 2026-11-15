@@ -29,6 +29,15 @@ export interface MenuEntry {
   returns: string[];
   /** The catalog's own tags for the endpoint. */
   tags: string[];
+  /**
+   * How the catalog qualifies the price.
+   *
+   * "exact" is a fixed price. "upto" is a ceiling: the call costs at most
+   * this. The live catalog says which, and the solver quotes the number the
+   * catalog gives while the answer says which kind it is, so a ceiling is
+   * never read as a fixed price.
+   */
+  price_unit?: string;
 }
 
 export interface Menu {

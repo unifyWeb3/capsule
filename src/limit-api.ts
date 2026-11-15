@@ -11,6 +11,7 @@
  * part that knows where the catalog and the record live.
  */
 import { loadMenu, type Menu } from "./menu.js";
+import { loadLiveMenu } from "./catalog-live.js";
 import { readReceipts, type Receipts } from "./proof.js";
 import {
   planLimit,
@@ -34,6 +35,9 @@ export class LimitInputError extends Error {
   }
 }
 
+/** Which catalog the answer is priced over. */
+export type CatalogChoice = "auto" | "live" | "snapshot";
+
 export interface LimitRequest {
   /** The facts the answer needs. Empty means the recorded run's facts. */
   facts?: string[];
@@ -41,6 +45,26 @@ export interface LimitRequest {
   perTxUsd?: number;
   /** The most the session may spend in total. */
   totalUsd?: number;
+  /**
+   * Which catalog to price over.
+   *
+   * "auto" prices the recorded run over the catalog of its day, so the number
+   * stays the number the run measured, and prices a caller's own facts over
+   * the live catalog, so their answer is today's answer.
+   */
+  catalog?: CatalogChoice;
+}
+
+/**
+ * The seams the tests use.
+ *
+ * The live catalog is a network read, so the service takes the reader as a
+ * dependency rather than reaching for it itself. The production callers pass
+ * nothing and get the real thing.
+ */
+export interface LimitDeps {
+  /** Reads the live catalog. Returns null when it cannot be read. */
+  live?: () => Promise<Menu | null>;
 }
 
 export interface LimitAnswer {
@@ -53,9 +77,12 @@ export interface LimitAnswer {
     source: "recorded_run" | "your_caps";
   };
   catalog: {
+    /** When the catalog was read. */
     generated_at: string;
     source: string;
     endpoints: number;
+    /** Whether it was read live, or read from the snapshot this build carries. */
+    live: boolean;
   };
   plan: PlanJson;
   /** What a reader needs to know about how this answer was reached. */
@@ -78,6 +105,8 @@ export interface PlanJson {
       evidence: Evidence;
       status: string;
       tx_hash: string | null;
+      /** "exact", a ceiling such as "upto", or null when the record paid it. */
+      price_unit: string | null;
       matched_words: string[];
     } | null;
     weak_candidates: Array<{
@@ -207,6 +236,7 @@ function candidateJson(candidate: Candidate | null) {
     evidence: candidate.evidence,
     status: candidate.status,
     tx_hash: candidate.txHash,
+    price_unit: candidate.priceUnit,
     matched_words: candidate.matchedWords,
   };
 }
@@ -258,9 +288,18 @@ export function planJson(plan: LimitPlan): PlanJson {
  *
  * With no facts, the recorded run's facts and caps are used, so a bare call
  * answers the measured question with the measured number.
+ *
+ * Which catalog it is priced over depends on whose question it is. The
+ * recorded run happened on a day, and that day's prices are the ones it
+ * measured, so the recorded run is priced over the snapshot and the number
+ * stays the number the log holds. A caller's own facts are about today, so
+ * they are priced over the live catalog, read over plain HTTPS with no key.
+ * Either way the answer says which catalog it used and when it was read.
  */
-export async function priceLimit(input: LimitRequest = {}): Promise<LimitAnswer> {
-  const menu: Menu = await loadMenu();
+export async function priceLimit(
+  input: LimitRequest = {},
+  deps: LimitDeps = {},
+): Promise<LimitAnswer> {
   const receipts = await readReceipts();
 
   const asked = (input.facts ?? [])
@@ -292,6 +331,22 @@ export async function priceLimit(input: LimitRequest = {}): Promise<LimitAnswer>
     );
   }
 
+  // The catalog this answer is priced over.
+  const choice: CatalogChoice = input.catalog ?? "auto";
+  const wantLive =
+    choice === "live" || (choice === "auto" && basis === "your_facts");
+  let live = false;
+  let menu: Menu | null = null;
+  if (wantLive) {
+    const reader = deps.live ?? loadLiveMenu;
+    const liveMenu = await reader();
+    if (liveMenu && liveMenu.endpoints.length) {
+      menu = liveMenu;
+      live = true;
+    }
+  }
+  if (!menu) menu = await loadMenu();
+
   const plan = planLimit({
     facts: chosen,
     caps: { perTxUsd, totalUsd },
@@ -303,6 +358,18 @@ export async function priceLimit(input: LimitRequest = {}): Promise<LimitAnswer>
   if (basis === "recorded_run") {
     notes.push(
       "These are the recorded run's facts and caps. The solver priced them over the same catalog snapshot the run used, and arrived at the number the run measured.",
+    );
+    notes.push(
+      "The run's prices belong to the day it ran. Add ?catalog=live to price the same facts over today's catalog.",
+    );
+  }
+  if (live) {
+    notes.push(
+      `Priced over the live Kite catalog, read over plain HTTPS with no key, as of ${menu.generated_at}. The prices are the catalog's own.`,
+    );
+  } else if (wantLive) {
+    notes.push(
+      `The live catalog could not be read just now, so this answer uses the snapshot this build carries (${menu.generated_at}).`,
     );
   }
   if (
@@ -316,6 +383,22 @@ export async function priceLimit(input: LimitRequest = {}): Promise<LimitAnswer>
   if (plan.unpricedFacts.length) {
     notes.push(
       `No merchant in the catalog claims ${plan.unpricedFacts.map((fact) => `"${fact}"`).join(", ")}, so that part of the answer is left unpriced rather than guessed.`,
+    );
+  }
+  const ceilings = plan.facts.filter(
+    (row) => row.candidate?.priceUnit && row.candidate.priceUnit !== "exact",
+  );
+  if (ceilings.length) {
+    notes.push(
+      `${ceilings.length} of the prices above are ceilings, not fixed prices: the catalog qualifies them as "${ceilings[0]!.candidate!.priceUnit}".`,
+    );
+  }
+  const demonstrated = plan.facts.filter(
+    (row) => row.candidate?.evidence === "demonstrated",
+  );
+  if (demonstrated.length) {
+    notes.push(
+      `${demonstrated.length} of the covers are demonstrated: the price is one the recorded run actually paid, with its transaction, not today's catalog price.`,
     );
   }
 
@@ -334,6 +417,7 @@ export async function priceLimit(input: LimitRequest = {}): Promise<LimitAnswer>
       generated_at: menu.generated_at,
       source: menu.source,
       endpoints: menu.endpoints.length,
+      live,
     },
     plan: planJson(plan),
     notes,

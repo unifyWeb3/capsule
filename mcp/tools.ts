@@ -72,6 +72,7 @@ export async function priceMyLimit(input: {
   facts?: unknown;
   per_tx_usd?: unknown;
   total_usd?: unknown;
+  catalog?: unknown;
 }): Promise<Record<string, unknown>> {
   const facts: string[] = [];
   if (Array.isArray(input.facts)) {
@@ -100,9 +101,19 @@ export async function priceMyLimit(input: {
     return parsed;
   };
 
+  const catalog = (() => {
+    if (input.catalog === undefined || input.catalog === null) return undefined;
+    const value = String(input.catalog).trim().toLowerCase();
+    if (value !== "auto" && value !== "live" && value !== "snapshot") {
+      throw new Error("catalog must be one of auto, live or snapshot");
+    }
+    return value;
+  })();
+
   return (await priceLimit({
     facts: facts.length ? facts : undefined,
     perTxUsd: number(input.per_tx_usd, "per_tx_usd"),
     totalUsd: number(input.total_usd, "total_usd"),
+    catalog,
   })) as unknown as Record<string, unknown>;
 }

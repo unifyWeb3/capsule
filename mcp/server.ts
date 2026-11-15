@@ -125,11 +125,17 @@ server.registerTool(
         .nonnegative()
         .optional()
         .describe("The most the session may spend in total, in dollars. Defaults to the recorded run's $0.0025."),
+      catalog: z
+        .enum(["auto", "live", "snapshot"])
+        .optional()
+        .describe(
+          "Which Kite service catalog to price over: auto (the recorded run over the catalog of its day, your own facts over the live catalog), live (today's catalog, read over plain HTTPS), or snapshot (the catalog this build carries).",
+        ),
     },
   },
-  async ({ facts, per_tx_usd, total_usd }) => {
+  async ({ facts, per_tx_usd, total_usd, catalog }) => {
     try {
-      return asText(await priceMyLimit({ facts, per_tx_usd, total_usd }));
+      return asText(await priceMyLimit({ facts, per_tx_usd, total_usd, catalog }));
     } catch (error) {
       return {
         content: [

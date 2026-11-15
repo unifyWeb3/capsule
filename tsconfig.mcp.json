@@ -10,6 +10,7 @@
   "include": [
     "mcp/**/*.ts",
     "src/build-proof.ts",
+    "src/catalog-live.ts",
     "src/chains.ts",
     "src/limit-api.ts",
     "src/limit-cost.ts",

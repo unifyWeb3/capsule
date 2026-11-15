@@ -67,6 +67,11 @@ export interface Candidate {
   status: CandidateStatus;
   /** The transaction, when the candidate was actually paid for. */
   txHash: string | null;
+  /**
+   * How the price is qualified: "exact", a ceiling such as "upto", or null
+   * when the price is one the record actually paid and needs no qualifier.
+   */
+  priceUnit: string | null;
   /** The words of the fact the endpoint's own text matched. */
   matchedWords: string[];
 }
@@ -231,6 +236,9 @@ export function candidatesForFact(
       evidence: "demonstrated",
       status: attempt.outcome,
       txHash: attempt.txHash,
+      // The record carries the price that was actually quoted and paid, so it
+      // needs no qualifier.
+      priceUnit: null,
       matchedWords: contentWords(fact),
     });
   }
@@ -249,6 +257,7 @@ export function candidatesForFact(
       evidence: "declared",
       status: "untried",
       txHash: null,
+      priceUnit: entry.price_unit ?? "exact",
       matchedWords: matchedWords(entry, fact),
     });
   }

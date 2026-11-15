@@ -63,8 +63,10 @@
           A per-call cap and a total budget are easy to set and hard to reason about. The
           recorded run shows why: a <strong>$0.0025</strong> budget bought <strong>$0.002</strong>
           of evidence and left the answer <strong>$0.051</strong> short. This page prices
-          that trade for your facts and your caps, over the same catalog snapshot the run
-          used, with the same solver. No account, no session, nothing moves.
+          that trade for your facts and your caps, with the same solver. Your own facts are
+          priced over the live Kite catalog, read today over plain HTTPS with no key. The
+          recorded run is priced over the catalog of the day it ran, because that is the
+          catalog its prices belong to. No account, no session, nothing moves.
         </p>
 
         <form class="field field-cost" id="form" novalidate>
@@ -103,6 +105,16 @@
               spellcheck="false"
               placeholder="0.0025"
             />
+            <label for="catalog">Which catalog</label>
+            <select id="catalog" name="catalog" aria-describedby="catalog-hint">
+              <option value="auto">Automatic</option>
+              <option value="live">Live catalog, read today</option>
+              <option value="snapshot">The recorded run's day</option>
+            </select>
+            <p class="field-hint" id="catalog-hint">
+              Automatic prices your facts over today's catalog and the recorded run over
+              the catalog it ran on.
+            </p>
             <button type="submit" id="go">Price it</button>
           </div>
         </form>
@@ -150,10 +162,12 @@
             </li>
           </ul>
           <p>
-            The catalog is the live Kite service catalog, filtered to Base mainnet USDC,
-            snapshotted on <span id="catalog-when">the day of the run</span>. Prices
-            belong to the merchants. The same answer is available as
-            <a href="/api/limit-cost">/api/limit-cost</a> and as the
+            The catalog is the live Kite service catalog, filtered to Base mainnet USDC.
+            Your facts are priced over it as it stands today, read over plain HTTPS with
+            no key and no account. The recorded run is priced over the catalog of the day
+            it ran, which is the catalog its prices belong to, and that answer is the
+            number the run measured. Prices belong to the merchants. The same answer is
+            available as <a href="/api/limit-cost">/api/limit-cost</a> and as the
             <code>price_my_limit</code> tool in the <code>capsule-mcp</code> package.
           </p>
         </div>

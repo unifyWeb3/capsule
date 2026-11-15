@@ -962,7 +962,8 @@ table.checks td.wrap { font-family: var(--sans); color: var(--ink-2); }
   resize: vertical;
 }
 .field-cost textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
-.field-cost-caps input {
+.field-cost-caps input,
+.field-cost-caps select {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -971,7 +972,8 @@ table.checks td.wrap { font-family: var(--sans); color: var(--ink-2); }
   font: 0.87rem/1.5 var(--mono);
   padding: 11px 14px;
 }
-.field-cost-caps input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
+.field-cost-caps input:focus-visible,
+.field-cost-caps select:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
 .field-cost-caps button { margin-top: 6px; }
 .field-cost .field-hint { flex: none; margin-top: 8px; }
 @media (max-width: 720px) {

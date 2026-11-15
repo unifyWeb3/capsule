@@ -36,6 +36,7 @@ need("LICENSE", "the licence the manifest claims");
 // Every module the server reaches, compiled into the same tree.
 const MODULES = [
   "src/build-proof.js",
+  "src/catalog-live.js",
   "src/chains.js",
   "src/limit-api.js",
   "src/limit-cost.js",

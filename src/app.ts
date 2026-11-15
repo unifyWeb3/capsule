@@ -23,7 +23,7 @@ import { verifyPublishedLog } from "./verify-log.js";
 import { sellerRouter } from "./seller.js";
 import { readReceipts, type Receipts, type ReceiptStep } from "./proof.js";
 import { buildProof } from "./build-proof.js";
-import { LimitInputError, priceLimit } from "./limit-api.js";
+import { LimitInputError, priceLimit, type CatalogChoice } from "./limit-api.js";
 import { PUBLIC_DIR, REPO_ROOT } from "./paths.js";
 import { allow } from "./rate-limit.js";
 
@@ -107,6 +107,21 @@ function readCap(value: unknown, name: string): number | undefined {
     );
   }
   return parsed;
+}
+
+/**
+ * Which catalog the caller asked to be priced over.
+ *
+ * A typo here would quietly price the wrong thing, so it is an error rather
+ * than a default.
+ */
+function readCatalog(value: unknown): CatalogChoice | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const choice = String(value).trim().toLowerCase();
+  if (choice === "auto" || choice === "live" || choice === "snapshot") return choice;
+  throw new LimitInputError(
+    "catalog must be one of auto, live or snapshot",
+  );
 }
 
 /**
@@ -344,13 +359,11 @@ export function createApp(config: AppConfig = readConfig()) {
    * The limit calculator.
    *
    * Free, because it moves no money and reads no chain: it prices a set of
-   * facts against a set of caps over the catalog snapshot this deployment
-   * carries. The number it returns is the one the recorded run measured,
-   * computed by the same solver, so the page and the record cannot disagree
-   * about what a limit costs.
-   *
-   * With no parameters it answers the recorded run, which is the number the
-   * README quotes. With facts and caps it answers the caller's.
+   * facts against a set of caps over the Kite service catalog. With no
+   * parameters it answers the recorded run, priced over the catalog snapshot
+   * of the day it ran, which is the number the README quotes. With facts and
+   * caps it answers the caller's, priced over the live catalog, read over
+   * plain HTTPS with no key, so their answer is today's answer.
    */
   app.get("/api/limit-cost", async (request: Request, response: Response) => {
     // The solver enumerates subsets of the facts, so the work grows with the
@@ -366,10 +379,12 @@ export function createApp(config: AppConfig = readConfig()) {
       const facts = readFacts(request.query.facts);
       const perTx = readCap(request.query.per_tx, "per_tx");
       const total = readCap(request.query.total, "total");
+      const catalog = readCatalog(request.query.catalog);
       const answer = await priceLimit({
         facts: facts.length ? facts : undefined,
         perTxUsd: perTx,
         totalUsd: total,
+        catalog,
       });
       response.set("Cache-Control", "public, max-age=60");
       return response.json(answer);

@@ -23,9 +23,9 @@ const form = document.getElementById("form");
 const factsInput = document.getElementById("facts");
 const perTxInput = document.getElementById("per-tx");
 const totalInput = document.getElementById("total");
+const catalogInput = document.getElementById("catalog");
 const go = document.getElementById("go");
 const body = document.getElementById("answer-body");
-const catalogWhen = document.getElementById("catalog-when");
 
 /** Money, without the trailing zeros. */
 function usd(value) {
@@ -57,6 +57,8 @@ function queryFrom() {
   if (perTx) params.set("per_tx", perTx);
   const total = totalInput.value.trim();
   if (total) params.set("total", total);
+  const catalog = catalogInput?.value ?? "auto";
+  if (catalog && catalog !== "auto") params.set("catalog", catalog);
   return params;
 }
 
@@ -175,9 +177,10 @@ function render(answer) {
     : "";
 
   const provenance = html`<p class="muted-mono">
-    Catalog snapshot from ${answer.catalog.generated_at.slice(0, 10)}:
-    ${answer.catalog.endpoints} endpoints, every one priced by its merchant. Solver:
-    exact enumeration over fact subsets, no model in the loop.
+    ${answer.catalog.live
+      ? html`Catalog read live today, as of ${answer.catalog.generated_at}: ${answer.catalog.endpoints} endpoints, every one priced by its merchant.`
+      : html`Catalog snapshot from ${answer.catalog.generated_at}: ${answer.catalog.endpoints} endpoints, every one priced by its merchant.`}
+    Solver: exact enumeration over fact subsets, no model in the loop.
   </p>`;
 
   mount(
@@ -218,9 +221,6 @@ async function price() {
     if (!response.ok) {
       throw new Error(answer.message ?? `the endpoint answered HTTP ${response.status}`);
     }
-    if (catalogWhen) {
-      catalogWhen.textContent = answer.catalog.generated_at.slice(0, 10);
-    }
     const next = params.toString();
     window.history.replaceState(
       {},
@@ -252,5 +252,8 @@ if (incoming.get("facts")) {
 }
 if (incoming.get("per_tx")) perTxInput.value = incoming.get("per_tx");
 if (incoming.get("total")) totalInput.value = incoming.get("total");
+if (incoming.get("catalog") && catalogInput) {
+  catalogInput.value = incoming.get("catalog");
+}
 
 void price();
