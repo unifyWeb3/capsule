@@ -45,6 +45,8 @@ left alone.
 | 10 | The token-bucket rate limit on `/verify` | §7.5 | **BUILT**: `src/rate-limit.ts`; 30/min/IP, 6/min/log URL, 20 in flight, 429 + `Retry-After` |
 | 11 | `POST /api/verify`: the verifier as an x402 merchant, $0.001 | §4.5 | **BUILT**: `src/app.ts` `paidRoutes` + handler; 402 challenge verified; settlement untested in production (never paid yet) |
 | 12 | `mcp/server.ts`: the verifier as an MCP tool (`verify_record`, `get_proof`) | §4 | **BUILT**: stdio MCP, zero custody; integration-tested against the live record |
+| 13 | The limit calculator: the price of a limit, solved rather than asserted | §4.1 | **BUILT**: `src/limit-cost.ts` (the solver), `src/limit-api.ts` (the service), `GET /api/limit-cost`, `/cost`, and `price_my_limit` in the MCP package. Exact enumeration over the subsets of the facts; the recorded run is its regression test, and the two agree at `$0.051` and `20.4x` |
+| 14 | The npm package: the verifier and the calculator as one installable tool | §4 | **BUILT**: `packages/capsule-mcp/`, built from this repository's own modules and guarded by a publish check. **Not published yet**: npm's two-factor policy is the only thing in the way, and the account has no second factor on the write (`npm profile get 2fa` answers `tfa: false`) |
 
 **Why items 6–10 are not built.** They are the hosted-record tier, and the hosted
 tier has no customer. `docs/BRIEF.md` records the payment evidence as level 5, our
@@ -553,6 +555,19 @@ which half is the owner's word.*
 | GET | `/verify` | `?log=<https url>` `?budget=<usd>` `?format=json` | the `PublishedProof` | 200 / 400 / 422 / 429 | `public, max-age=30, stale-while-revalidate=300` |
 | GET | `/api/verify` | `?log=<https url>` `?budget=<usd>` | the same, JSON only, never a redirect | 200 / 400 / 422 / 429 | `public, max-age=60` **(new)** |
 
+**Public, unauthenticated, rate-limited: the limit calculator.** It moves no money and
+reads no chain, so it is free, and it is rate-limited because the solver enumerates
+subsets of the facts (at most twelve).
+
+| Method | Path | Request | Response | Status | Cache |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/limit-cost` | `?facts=<a,b>` (repeated or comma-separated) `?per_tx=<usd>` `?total=<usd>` | `{status, basis, caps, catalog, plan, notes}` | 200 / 400 `invalid_request` / 429 | `public, max-age=60` **(new)** |
+
+With no parameters it prices the recorded run, and the answer is the number the run
+measured: `$0.051` against a `$0.0025` budget, `20.4x`. The solver is exact
+enumeration over the subsets of the facts, and the recorded run is its regression
+test (`src/limit-cost.ts`, `test/limit-cost.test.ts`).
+
 **Authenticated: the owner.** `Authorization: Bearer <owner token>`; the token is stored
 as a SHA-256 hash, never in the clear.
 
@@ -568,8 +583,9 @@ as a SHA-256 hash, never in the clear.
 **Paid: the merchant.** `GET /v1/snapshot` $0.02, `/v1/history` $0.05, `/v1/deep` $0.10,
 `/v1/briefing` $0.25 (prices from `src/catalog.ts:17-67`). `GET /catalog` is free.
 
-**Addresses (HTML surfaces).** The pages are served at clean addresses: `/`, `/runs`,
-`/run`, `/replay`, `/verify`, `/components`, `/docs/format`, `/docs/security-model`.
+**Addresses (HTML surfaces).** The pages are served at clean addresses: `/`, `/cost`,
+`/runs`, `/run`, `/replay`, `/verify`, `/components`, `/docs/format`,
+`/docs/security-model`.
 The documents are files on disk; the address never shows the extension. Every legacy
 `.html` address answers 301 to its clean one (`/runs.html` → `/runs`,
 `/index.html` → `/`), carrying the query string across, because `?log=` is how a
@@ -577,6 +593,15 @@ reader asks for somebody else's record and `?id=` is how a reader asks for a run
 (`src/app.ts`, and the edge rules in `vercel.json`). `/proof` → `/`. `/verify` answers
 both ways: a browser gets the interactive page, a caller that asks for JSON gets the
 proof.
+
+**One address for the whole site.** The deployment answers on three aliases, so
+every page states which one is canonical (`<link rel="canonical">` and `og:url`),
+and the card that renders when the link is pasted states the same title and
+sentence as the page's own metadata (`og:title`, `og:description`, `twitter:title`,
+`twitter:description`). `public/sitemap.xml` lists the nine documents on that host
+and `public/robots.txt` points at it. `test/share.test.ts` reads the files that are
+actually served, so a page that loses its tags, or a page added to the disk and
+forgotten in the test, fails the build.
 
 ### 4.2 The error envelope
 
@@ -2025,11 +2050,11 @@ delivered the same outcome for a third of the cost
 | **A `core/` + `adapters/` restructure** | `src/verify-log.ts` already reuses `ChainReader` and `verifyStep` from `src/proof.ts`. The duplication is ~40 lines; the outcome a third party experiences is a writer they can use, not a directory layout. **The public interface of this product is the log format and the HTTP API.** The one new interface in this document (`RecordStore`) earns its keep because the *product* has two modes, not because the codebase is untidy. |
 | **A queue, a worker, an event bus** | The whole product is request/response plus one append-only file writer. The only long operation is an agent run, and that is a script (`npm run demo`), not a service. A queue in front of a 720 ms endpoint is how a demo starts pretending to be a platform. |
 | **Redis** | The two cache needs are (a) immutable verdicts keyed by a transaction hash and (b) one head row per chain. Both fit Postgres: one row per transaction ever seen, and twelve head upserts a minute for the whole deployment. Redis would be a second deployable, a second set of credentials, and an invalidation story for something Postgres already solves. At 100× we would add it, for the head, and a read replica, and not before. |
-| **A bundler for the front end** | the front end is plain files served as they are, with no build step. The engineering review already lists "a bundler, when the UI grows past a few modules" as open (`docs/ENGINEERING-REVIEW.md:139`). It has now grown, to 12 modules and a component library, and still does not need one, because the modules are ES modules the browser loads natively and there is no compile step to justify a build step. |
+| **A bundler for the front end** | the front end is plain files served as they are, with no build step. The engineering review already lists "a bundler, when the UI grows past a few modules" as open (`docs/ENGINEERING-REVIEW.md:139`). It has now grown, to 21 modules and a component library, and still does not need one, because the modules are ES modules the browser loads natively and there is no compile step to justify a build step. |
 | **A row per decision** | The log format is the public interface. A table that models a decision makes our schema the format, and then a third party's log would have to be in our schema to be verified: the opposite of "you do not have to write in our format" (`README.md:152`). |
 | **A hosted wallet, a card, a spend dashboard** | `docs/BRIEF.md:83`: "Not a wallet, a card issuer, or a spend-management dashboard." The cap is the Passport's, enforced in Kite's backend. Building a wallet would put the limit back inside our code. |
 | **Multi-agent orchestration, a retry policy, a scheduler** | The evidence this project owns is one task, one agent, one session, run twice with one number changed. Orchestration would dilute the one experiment that makes the product legible. |
-| **The set-cover solver in this pass** | It needs a decision about coverage: *declared* from the catalog's metadata versus *demonstrated* by a purchase, and that decision has not been made (`docs/ENGINEERING-REVIEW.md:202-215`). A solver over declared coverage computes a hypothetical number that can disagree with the observed $0.051, and two different numbers for one idea on one page is worse than one number. |
+| **The set-cover solver** | It needed a decision about coverage: *declared* from the catalog's metadata versus *demonstrated* by a purchase. That decision is now made and the solver is built (`src/limit-cost.ts`): a cover is demonstrated or declared and the answer says which, a claim has to be complete before it counts, and a fact no merchant claims is left unpriced rather than guessed. The solver enumerates the subsets of the facts exactly, so the answer is the same every time, and the recorded run is its regression test: the same catalog and the same attempts give the same `$0.051` and the same `20.4x` the log measured. Two different numbers for one idea on one page would have been worse than one number, so the decision came first and the solver second. |
 | **A trust score or reputation layer** | The refusals are the owner's claim. A score would launder a claim into a fact, which is the one dishonesty the README is careful about. If the refusals ever get a chain anchor, it will be an attestation transaction per refusal (`docs/PROVENANCE.md:75`), and the score will come after that, not before. |
 | **A "status" endpoint that hides its own failures** | `/healthz` already reports what the deployment can and cannot read (`src/app.ts:214-235`). A status page that says "green" while a file is missing from the bundle is exactly the failure mode the engineering review caught (`docs/ENGINEERING-REVIEW.md:61-72`). |
 | **An ORM** | Five tables, one migration script, forward-only SQL. An ORM is a second way to express the same schema and a second thing to keep in step with it. |
@@ -2057,10 +2082,13 @@ delivered the same outcome for a third of the cost
 - **I did not run `npm test`, `npx tsc --noEmit` or `npm run verify`.** Another agent was
   editing the repository while I read it, and I was instructed not to modify it. The
   numbers I quote for the chain reads and the live deployment are from my own probes
-  against Base and against `capsule-phi-blond.vercel.app` today.
+  against Base and against `capsule-phi-blond.vercel.app` today. *Those three checks
+  run in CI on every push now, and `npm run verify` runs against the live deployment
+  on every shipping pass. The latest pass: `npm test` 84/84, `tsc` clean, `npm run
+  verify` 16/16 against `capsule-phi-blond.vercel.app`.*
 - **The Postgres schema has not been executed.** It is written to be run by
   `npm run db:migrate`, but it has not been applied to a live database.
 - **The code has moved since this draft.** Items 1–5 of §0.5 are built and their
   measurements are in `docs/OPTIMIZATION.md`. The line numbers here are to `142a032`
   and some have shifted; the files they point at are correct. The test count quoted
-  elsewhere in this document (45) is now **50**.
+  elsewhere in this document (45) is now **84**.
