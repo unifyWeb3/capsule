@@ -45,6 +45,7 @@ after(async () => {
 /** The pages and a phrase each one is known by. */
 const PAGES: Array<[string, string]> = [
   ["/", "Capsule"],
+  ["/cost", "What a spending limit"],
   ["/runs", "The same task"],
   ["/run?id=recorded", "One run."],
   ["/replay", "Watch the run"],
@@ -71,6 +72,7 @@ test("every page answers at its clean address, with no extension in sight", asyn
 test("every old .html address moves, permanently, and keeps its query string", async () => {
   const LEGACY: Array<[string, string, string]> = [
     ["/index.html", "/", ""],
+    ["/cost.html", "/cost", ""],
     ["/runs.html", "/runs", ""],
     ["/run.html?id=recorded", "/run", "?id=recorded"],
     ["/replay.html", "/replay", ""],
