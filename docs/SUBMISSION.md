@@ -178,9 +178,10 @@ Reply 2, the tool (196 characters):
 > any published spending record before it trusts one. No wallet, no account, no session.
 > The URL is the credential.
 
-That command runs the TypeScript in this repository, so it works whether or not the npm
-publish has happened. If it has, `npx -y @oxunify/capsule-mcp` is the same three tools from the
-registry.
+That command runs the TypeScript in this repository, so it works with no registry at all.
+The same three tools are on npm as `@oxunify/capsule-mcp` (0.1.0), published 2026-11-16
+and verified from a clean directory against the registry, so `npx -y
+@oxunify/capsule-mcp` is the same server from the registry.
 
 Reply 3, the calculator, if you want to add it (224 characters):
 
