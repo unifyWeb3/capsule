@@ -306,6 +306,45 @@ export async function fetchText(
   throw new UnsafeUrlError("too many redirects");
 }
 
+/**
+ * Whether a failure is a timeout.
+ *
+ * A timeout is the one failure worth trying again: a cold edge, a slow public
+ * host, a first TLS handshake on a slow link. A refusal, a 404 or an oversized
+ * body is the host's answer, and repeating the question does not change it.
+ */
+export function isTimeoutError(error: unknown): boolean {
+  return error instanceof Error && /timed out/i.test(error.message);
+}
+
+/**
+ * Runs an operation, trying it once more when it fails with a timeout.
+ *
+ * This exists because of what the agent version of the stranger test found:
+ * the first `verify_record` call came back with "the request timed out", and
+ * the second call, seconds later, verified the same log. A judge who gives up
+ * on the first answer never sees the proof. The retry is the whole difference
+ * between "flaky" and "works".
+ *
+ * The operation is tried at most `attempts` times in total. A timeout on the
+ * last attempt is rethrown as it was.
+ */
+export async function withTimeoutRetry<T>(
+  operation: () => Promise<T>,
+  attempts = 2,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (!isTimeoutError(error)) throw error;
+    }
+  }
+  throw lastError;
+}
+
 interface ResponseHead {
   status: number;
   headers: Record<string, string | string[] | undefined>;

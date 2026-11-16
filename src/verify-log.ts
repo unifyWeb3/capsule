@@ -11,7 +11,7 @@
  * hashes and prices are in the record. A log that is in Capsule's format also
  * has its hash chain verified.
  */
-import { fetchText } from "./net.js";
+import { fetchText, isTimeoutError, withTimeoutRetry } from "./net.js";
 import {
   expectedBaseUnits,
   readerFor,
@@ -258,13 +258,35 @@ export function allPaymentsConfirmed(checks: ChainCheck[]): boolean {
 }
 
 /**
+ * Fetches the log, trying a timeout once more.
+ *
+ * The agent version of the stranger test found this: the first call came back
+ * with "the request timed out" and the second call, seconds later, verified the
+ * same log. The fetch is the only part of the check that depends on somebody
+ * else's server answering in time, so it is the only part that gets a second
+ * try. A refusal or a 404 is not retried: that is the host's answer.
+ */
+async function fetchLog(logUrl: string): Promise<{ url: string; body: string }> {
+  try {
+    return await withTimeoutRetry(() => fetchText(logUrl));
+  } catch (error) {
+    if (isTimeoutError(error)) {
+      throw new Error(
+        `the log host did not answer in time (${logUrl}); try again in a moment`,
+      );
+    }
+    throw error;
+  }
+}
+
+/**
  * Verifies a published log and returns the proof.
  */
 export async function verifyPublishedLog(
   logUrl: string,
   options: { budgetUsd?: number } = {},
 ): Promise<PublishedProof> {
-  const { url: fetchedFrom, body } = await fetchText(logUrl);
+  const { url: fetchedFrom, body } = await fetchLog(logUrl);
   const records = parseRecords(body);
   if (!records.length) {
     throw new Error("the log is empty");

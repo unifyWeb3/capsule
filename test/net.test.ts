@@ -5,6 +5,8 @@ import {
   assertFetchable,
   resolvePublic,
   createPinnedLookup,
+  isTimeoutError,
+  withTimeoutRetry,
   UnsafeUrlError,
 } from "../src/net.js";
 
@@ -66,6 +68,63 @@ test("an address literal that is private is refused", async () => {
 test("a public URL is accepted", async () => {
   const url = await assertFetchable("https://example.com/log.jsonl");
   assert.equal(url.hostname, "example.com");
+});
+
+test("a timeout is the one failure worth trying again", async () => {
+  assert.equal(isTimeoutError(new Error("the request timed out")), true);
+  assert.equal(isTimeoutError(new Error("Request timed out")), true);
+  assert.equal(isTimeoutError(new Error("the log host answered HTTP 404")), false);
+  assert.equal(isTimeoutError("the request timed out"), false);
+  assert.equal(isTimeoutError(undefined), false);
+});
+
+test("a timeout is retried once and the second answer is kept", async () => {
+  // This is the shape the stranger test found: the first call times out, the
+  // second one, seconds later, works.
+  let calls = 0;
+  const answer = await withTimeoutRetry(async () => {
+    calls += 1;
+    if (calls === 1) throw new Error("the request timed out");
+    return "verified";
+  });
+  assert.equal(answer, "verified");
+  assert.equal(calls, 2);
+});
+
+test("a refusal is not retried", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () =>
+      withTimeoutRetry(async () => {
+        calls += 1;
+        throw new Error("the log host answered HTTP 404");
+      }),
+    /HTTP 404/,
+  );
+  assert.equal(calls, 1);
+});
+
+test("a timeout on the last attempt is reported as it was", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () =>
+      withTimeoutRetry(async () => {
+        calls += 1;
+        throw new Error("the request timed out");
+      }),
+    /the request timed out/,
+  );
+  assert.equal(calls, 2);
+});
+
+test("a first success is not followed by a second call", async () => {
+  let calls = 0;
+  const answer = await withTimeoutRetry(async () => {
+    calls += 1;
+    return "verified";
+  });
+  assert.equal(answer, "verified");
+  assert.equal(calls, 1);
 });
 
 test("the address is resolved once and pinned, so DNS cannot rebind it", async () => {
