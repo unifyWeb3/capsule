@@ -112,11 +112,13 @@ and footer on all eight pages, the favicon, the touch icon, and the share card.
 > the endpoint being chosen for that fact) or declared (the merchant's own catalog
 > text claims it), and a fact no merchant sells is left unpriced rather than guessed.
 >
-> **It is a tool, not only a page.** The same verifier and the same calculator are
-> published on npm as `capsule-mcp` (`npx -y capsule-mcp`), so an agent can check a
-> published spending record before it trusts one, or price its own limits before it
-> asks for a session. No wallet, no account, no session: the URL of the log is the
-> credential.
+> **It is a tool, not only a page.** The same verifier and the same calculator are an
+> MCP server with three tools, and one command runs it with no wallet, no account and
+> no session: `npx -y github:unifyWeb3/capsule`. It runs the TypeScript in this
+> repository, so the code that answers is the code a judge can read. The same three
+> tools are packaged for npm as `capsule-mcp`. An agent can check a published spending
+> record before it trusts one, or price its own limits before it asks for a session. The
+> URL of the log is the credential.
 >
 > The record has four independent anchors. The refusals were decided by the
 > Passport, not by us. The payments are transactions on Base, re-read from the chain
@@ -170,11 +172,15 @@ Reply 1, the evidence (254 characters):
 >
 > https://capsule-phi-blond.vercel.app/proof.json
 
-Reply 2, the tool (185 characters):
+Reply 2, the tool (196 characters):
 
-> The verifier is an MCP tool now: npx -y capsule-mcp. An agent can check any
-> published spending record before it trusts one. No wallet, no account, no session.
+> The verifier is an MCP tool now: npx -y github:unifyWeb3/capsule. An agent can check
+> any published spending record before it trusts one. No wallet, no account, no session.
 > The URL is the credential.
+
+That command runs the TypeScript in this repository, so it works whether or not the npm
+publish has happened. If it has, `npx -y capsule-mcp` is the same three tools from the
+registry.
 
 Reply 3, the calculator, if you want to add it (224 characters):
 
@@ -209,8 +215,10 @@ stop and fix it: a video with a stale number is worse than no video.
 - [x] Upload the video to YouTube, then paste its URL into field 10. **Done:**
       `https://youtu.be/nT8bjhT7WYY`
 - [ ] `npm view capsule-mcp version` answers `0.1.0`. If the publish has not
-      happened yet, cut the `capsule-mcp` sentence from the write-up in field 7 and
-      from reply 2.
+      happened yet, nothing else has to change: the write-up and reply 2 now point at
+      `npx -y github:unifyWeb3/capsule`, which runs the tool straight from this
+      repository and was verified end to end (handshake, three tools, `$0.051` and
+      `20.4x` from `price_my_limit`).
 - [x] The live deployment serves the new `/cost` page. **Done:** deployed from the
       pushed commit, and `/cost`, `/api/limit-cost` and the 301 from `/cost.html`
       were re-read from outside the session afterwards.
@@ -222,8 +230,9 @@ stop and fix it: a video with a stale number is worse than no video.
   readiness" instead of asserting it. The procedure, the exact prompt to paste, and the
   table to fill in are in `docs/STRANGER-TEST.md`, so all that is left is the person.
 - The npm publish: one command, `npm_config_otp=<code> npm run mcp:pack`, once an
-  authenticator app is enabled on the npm account. If it does not happen, cut the
-  `capsule-mcp` sentence from the write-up in field 7 and from reply 2.
+  authenticator app is enabled on the npm account. It is not on the critical path any
+  more: the tool runs from the repository with one command, and the npm package is for
+  people who prefer the registry.
 - Fields 14, 16, 17, 20, 21: the user's call.
 - The submission itself. **Do not submit on the strength of the artifact alone.** The
   submission is an authorized action and the last step.

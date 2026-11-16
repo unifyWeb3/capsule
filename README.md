@@ -228,7 +228,16 @@ and the time.
 
 No wallet, no account. A URL is the credential.
 
-**MCP** (stdio):
+**MCP** (stdio), one command, straight from this repository:
+
+```bash
+npx -y github:unifyWeb3/capsule
+```
+
+It runs the TypeScript in this repository, so the code that answers is the code you can
+read. The same three tools are packaged for npm as `capsule-mcp`.
+
+Or, from a clone:
 
 ```bash
 npm run mcp
