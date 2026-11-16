@@ -268,55 +268,68 @@ That is npm refusing the publish because the account has no second factor on the
 write. The package name is still free (`capsule-mcp` answers 404), so nothing was
 consumed and nothing needs cleaning up.
 
-The account's own profile said so: `npm profile get 2fa --json` answered
-`"tfa": false`. npm 11.19.1 is installed, and it knows both paths.
+**What npm changed on Nov 16, and what it means here.** `npm profile enable-2fa
+auth-and-writes` now answers:
 
-**Path A, an authenticator app (about two minutes).**
+```
+npm error code E404
+npm error 404 Not Found - POST https://registry.npmjs.org/-/npm/v1/user - Adding a new
+npm error TOTP 2FA is no longer supported.
+```
 
-1. Turn on two-factor authentication for writes:
-   ```bash
-   npm profile enable-2fa auth-and-writes
-   ```
-   npm prints a QR code and an `otpauth://` URL. Scan it with an authenticator app,
-   then paste the six-digit code it shows when npm asks. The same thing in the
-   browser: <https://www.npmjs.com/settings/access-tokens>.
-2. Publish with the six-digit code it shows:
+npm has stopped adding TOTP two-factor through the CLI and the API, and points at
+<https://npmjs.com/settings/oxunify/tfa> for a security key instead. `npm profile get
+2fa --json` still answers `"tfa": false` for this account, so the CLI cannot turn the
+second factor on by itself.
 
-   ```bash
-   cd /home/unify/serv
-   npm_config_otp=123456 npm run mcp:pack
-   ```
+That leaves one route that works from a terminal: **a granular access token with
+bypass 2FA**, which npm's own error message still names as a way to publish. There
+are two ways to mint one.
 
-   The code changes every thirty seconds, so use the current one. `npm publish
-   --otp 123456 ./packages/capsule-mcp` does the same thing if you would rather not
-   go through the script.
+**Path A, in the browser (no password prompt, about a minute).**
 
-**Path B, a granular token with bypass 2FA (one time, no code afterwards).**
+1. Open <https://www.npmjs.com/settings/access-tokens> and generate a token:
+   - Packages: `capsule-mcp`
+   - Permissions: **Read & write**
+   - Tick **Bypass 2FA**
+   - Expiry: the longest the form allows, or no expiry
+2. npm shows the token once. Copy it.
 
-1. Open <https://www.npmjs.com/settings/access-tokens> and generate a token with
-   read and write access to packages, and **bypass 2FA** ticked. The CLI does the
-   same thing, if you would rather not leave the terminal:
+**Path B, in the terminal (it asks for the npm password).**
 
-   ```bash
-   npm token create --name capsule-publish --packages capsule-mcp \
-     --packages-and-scopes-permission read-write --bypass-2fa
-   ```
+```bash
+npm token create --name capsule-publish --packages capsule-mcp \
+  --packages-and-scopes-permission read-write --bypass-2fa
+```
 
-   It prints one token. Treat it as a credential: it belongs in `~/.npmrc` and
-   nowhere else.
-2. Put it in `~/.npmrc`:
+Either way, put the token in `~/.npmrc`, replacing the `_authToken` line. This form
+keeps it out of the shell history:
 
-   ```
-   //registry.npmjs.org/:_authToken=npm_xxxxxxxxxxxxxxxx
-   ```
+```bash
+read -rs TOKEN && npm config set //registry.npmjs.org/:_authToken "$TOKEN" && unset TOKEN
+```
 
-3. `cd /home/unify/serv && npm run mcp:pack`. No code is asked for.
+Then publish. The token is scoped to `capsule-mcp` and can write it, which is all a
+publish needs:
 
-Either way, check it landed:
+```bash
+cd /home/unify/serv
+npm run mcp:pack
+```
+
+Check it landed:
 
 ```bash
 npm view capsule-mcp version      # expect 0.1.0
 npx -y capsule-mcp                # the server starts and waits for MCP input
+```
+
+To go back to a session token afterwards (the one `npm login --auth-type=web` writes),
+run `npm login --auth-type=web` again. To list and revoke the granular token:
+
+```bash
+npm token list
+npm token revoke <id>
 ```
 
 The publish runs `npm run mcp:build` first, so the tarball that goes out is always
