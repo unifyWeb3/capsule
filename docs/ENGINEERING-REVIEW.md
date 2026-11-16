@@ -459,13 +459,14 @@ judge who wants one table instead of three.
 | `npm run audit` | 12 pages × 2 viewports: no findings |
 | `npm run claims` + `npm run readme` | regenerate byte-identical output |
 | The MCP tarball | 21 files, installs clean, three tools answer |
+| The published package | `@oxunify/capsule-mcp@0.1.0` on the registry, installed from npm into an empty directory: handshake, `verify_record` verified with both payments confirmed on chain, `get_proof` `all_payments_verified_on_chain: true`, `price_my_limit` `$0.051` and `20.4x` |
 
 ## 10.3 What is still open, and what each one would take
 
 | Problem | Why it is open | What it would take |
 | --- | --- | --- |
 | The refusals are not chain-verified | a refusal leaves no transaction, and the payment network's ledger corroborates it by the absence of a payment rather than attesting it | an attestation transaction per refusal, signed by the agent. Needs the owner's wallet and a few cents of gas |
-| `@oxunify/capsule-mcp` is not on npm yet | npm removed TOTP enrollment from the CLI and the API ("Adding a new TOTP 2FA is no longer supported"), and its name policy rejects the unscoped `capsule-mcp` as too close to another package's `capsulemcp` | one command from the user: `npm run mcp:pack`, with a granular token that has bypass 2FA and write access to the `@oxunify` scope |
+| ~~`@oxunify/capsule-mcp` is not on npm yet~~ | **closed 2026-11-16**: npm removed TOTP enrollment from the CLI and the API ("Adding a new TOTP 2FA is no longer supported"), so the second factor came from a granular token with bypass 2FA, and npm's name policy forced the scope | published and re-read from the registry: `npm view @oxunify/capsule-mcp version` answers `0.1.0`, and a clean install into an empty directory completes the handshake and all three tools answer |
 | Settlement has never executed against our own host | the host is not on the Passport allowlist, ticket GOK-557, a review in progress | the review to clear. The 402 challenge is verified; only the settlement is unproven |
 | The calculator has a third live upstream | the Kite discovery backend is a new dependency at request time, and a serverless instance reads it per cold start | it is already covered: a timeout, one retry, and a fallback to the snapshot that says so. What is left is a shared cache of the live catalog, which matters only at volume |
 | The ledger is a snapshot too | the Passport's activity ledger is captured on one day, and a later reader cannot ask the network for an older session's record | the capture is a file with a date on it, so the reader knows exactly how old the second source is. A live capture would need the owner's account, which is the owner's to give |

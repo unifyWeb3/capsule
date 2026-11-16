@@ -242,11 +242,21 @@ can hurry.
 
 ## H. Publishing `@oxunify/capsule-mcp` to npm
 
-The package is built, guarded and rehearsed (`npm run mcp:pack:dry` ends with
-`+ @oxunify/capsule-mcp@0.1.0`, 21 files, 41.9 kB). What is left is npm's name policy
-and one token.
+**Done, 2026-11-16.** The package is on the registry as `@oxunify/capsule-mcp@0.1.0`,
+and it was re-read from the registry outside the session before anything in this
+repository claimed it was there:
 
-**The name is scoped, and that is npm's doing.** The unscoped `capsule-mcp` is refused:
+```bash
+npm view @oxunify/capsule-mcp version        # 0.1.0
+npx -y @oxunify/capsule-mcp                  # handshake, then the three tools
+```
+
+A clean `npm install @oxunify/capsule-mcp` into an empty directory, then the MCP
+handshake, then all three tools: `verify_record` answers `verified` with both payments
+confirmed on chain, `get_proof` answers `all_payments_verified_on_chain: true`, and
+`price_my_limit` answers `$0.051` and `20.4x`. No wallet, no account, no session.
+
+**The name is scoped, and that is npm's doing.** The unscoped `capsule-mcp` was refused:
 
 ```
 npm error code E403
@@ -260,17 +270,8 @@ and npm's similarity rule will not have two names that close. npm names the fix 
 so the package is published as `@oxunify/capsule-mcp`: the scope is the account's, the
 command is still `capsule-mcp`, and the install line is `npx -y @oxunify/capsule-mcp`.
 
-**Step 0, on Nov 16: the CLI token is rejected.** `npm whoami` answers
-`401 Unauthorized`, and `npm profile get 2fa --json` answers the same. The token in
-`~/.npmrc` no longer authenticates, so the publish fails before the 2FA check is even
-reached. Log in again first:
-
-```bash
-npm login --auth-type=web      # prints a URL; approve it in the browser
-npm whoami                     # expect: oxunify
-```
-
-**Step 1, the second factor.** The original error was this:
+**The second factor came from a granular token, because npm stopped adding TOTP.** The
+original failure was npm refusing the write without a second factor:
 
 ```
 npm error code E403
@@ -278,12 +279,8 @@ npm error 403 Forbidden - PUT https://registry.npmjs.org/capsule-mcp - Two-facto
 npm error authentication or granular access token with bypass 2fa enabled is required
 ```
 
-That is npm refusing the publish because the account has no second factor on the
-write. The package name is still free (`capsule-mcp` answers 404), so nothing was
-consumed and nothing needs cleaning up.
-
-**What npm changed on Nov 16, and what it means here.** `npm profile enable-2fa
-auth-and-writes` now answers:
+The CLI route for that second factor is gone. `npm profile enable-2fa auth-and-writes`
+now answers:
 
 ```
 npm error code E404
@@ -296,71 +293,47 @@ npm has stopped adding TOTP two-factor through the CLI and the API, and points a
 2fa --json` still answers `"tfa": false` for this account, so the CLI cannot turn the
 second factor on by itself.
 
-That leaves one route that works from a terminal: **a granular access token with
-bypass 2FA**, which npm's own error message still names as a way to publish. There
-are two ways to mint one.
+What worked was the other route npm's own error message names: **a granular access
+token with bypass 2FA**, minted in the browser at
+<https://www.npmjs.com/settings/access-tokens> with write access to the `@oxunify`
+scope and **Bypass 2FA** ticked. The token is now the `_authToken` in `~/.npmrc`:
 
-**Path A, in the browser (no password prompt, about a minute).**
-
-1. Open <https://www.npmjs.com/settings/access-tokens> and generate a token:
-   - Packages: leave empty, or `capsule-mcp`
-   - Organizations: **`@oxunify`**, read and write
-   - Tick **Bypass 2FA**
-   - Expiry: the longest the form allows (npm's notice says bypass-2FA tokens stop
-     being allowed to publish directly in **January 2027**)
-2. npm shows the token once. Copy it.
-
-**Path B, in the terminal (it asks for the npm password).**
-
-```bash
-npm token create --name capsule-publish --packages capsule-mcp \
-  --packages-and-scopes-permission read-write --bypass-2fa
+```
+//registry.npmjs.org/:_authToken=npm_xxxxxxxxxxxxxxxx
 ```
 
-A token made this way has `{"name": null, "type": "package"}` and
-`{"name": "ox_unify", "type": "org"}` in its scope list, which is npm's way of saying
-it can write any package and the whole `@oxunify` scope. That is exactly what a
-scoped publish needs, so no new token is required for the rename.
+The token list shows it as id `177b1d`, name `capsule-mcp`, expiring 2027-02-14, with
+`bypass_2fa: true` and the scope list `{"name": null, "type": "package"}` and
+`{"name": "ox_unify", "type": "org"}`, which is npm's way of saying it can write any
+package and the whole `@oxunify` scope.
 
-Either way, put the token in `~/.npmrc`, replacing the `_authToken` line. This form
-keeps it out of the shell history:
-
-```bash
-read -rs TOKEN && npm config set //registry.npmjs.org/:_authToken "$TOKEN" && unset TOKEN
-```
-
-Then publish. The token can write the `@oxunify` scope, which is all a scoped publish
-needs:
+**The publish, and the three things npm will do next time.** The script rebuilds, runs
+the guard, and publishes, so the tarball that goes out is always the current code and
+the guard refuses to publish if the build is incomplete:
 
 ```bash
 cd /home/unify/serv
 npm run mcp:pack
 ```
 
-Check it landed:
+That answers `+ @oxunify/capsule-mcp@0.1.0`. npm's own banner says bypass-2FA tokens
+stop being allowed to publish directly in **January 2027**, and the token above expires
+2027-02-14, so the next release needs the other route: add a security key at
+<https://npmjs.com/settings/oxunify/tfa>, then publish with an OTP.
 
-```bash
-npm view @oxunify/capsule-mcp version   # expect 0.1.0
-npx -y @oxunify/capsule-mcp             # the server starts and waits for MCP input
-```
-
-To go back to a session token afterwards (the one `npm login --auth-type=web` writes),
-run `npm login --auth-type=web` again. To list and revoke the granular token:
+To list and revoke the granular token:
 
 ```bash
 npm token list
-npm token revoke <id>
+npm token revoke 177b1d
 ```
 
-The publish runs `npm run mcp:build` first, so the tarball that goes out is always
-the current code, and the guard refuses to publish if the build is incomplete.
+To go back to a session token in the meantime, run `npm login --auth-type=web` again.
 
-**This is not on the critical path.** The same three tools run straight from the
+**This was never on the critical path.** The same three tools run straight from the
 repository with `npx -y github:unifyWeb3/capsule`, verified end to end from a clean
 directory: handshake, three tools, and `price_my_limit` returning `$0.051` and
 `20.4x`. The npm package is for people who prefer the registry.
-
----
 
 ## Where things live
 

@@ -235,8 +235,9 @@ npx -y github:unifyWeb3/capsule
 ```
 
 It runs the TypeScript in this repository, so the code that answers is the code you can
-read. The same three tools are packaged for npm as `@oxunify/capsule-mcp`, so
-`npx -y @oxunify/capsule-mcp` is the same server from the registry.
+read. The same three tools are **published on npm** as `@oxunify/capsule-mcp` (0.1.0),
+verified from a clean directory against the registry: handshake, three tools, `$0.051`
+and `20.4x`. So `npx -y @oxunify/capsule-mcp` is the same server from the registry.
 
 Or, from a clone:
 

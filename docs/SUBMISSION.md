@@ -116,7 +116,7 @@ and footer on all eight pages, the favicon, the touch icon, and the share card.
 > MCP server with three tools, and one command runs it with no wallet, no account and
 > no session: `npx -y github:unifyWeb3/capsule`. It runs the TypeScript in this
 > repository, so the code that answers is the code a judge can read. The same three
-> tools are packaged for npm as `@oxunify/capsule-mcp`. An agent can check a published spending
+> tools are published on npm as `@oxunify/capsule-mcp`. An agent can check a published spending
 > record before it trusts one, or price its own limits before it asks for a session. The
 > URL of the log is the credential.
 >
@@ -214,11 +214,14 @@ stop and fix it: a video with a stale number is worse than no video.
       `https://x.com/oxunify/status/2121633772202602884`
 - [x] Upload the video to YouTube, then paste its URL into field 10. **Done:**
       `https://youtu.be/nT8bjhT7WYY`
-- [ ] `npm view @oxunify/capsule-mcp version` answers `0.1.0`. If the publish has not
-      happened yet, nothing else has to change: the write-up and reply 2 now point at
-      `npx -y github:unifyWeb3/capsule`, which runs the tool straight from this
-      repository and was verified end to end (handshake, three tools, `$0.051` and
-      `20.4x` from `price_my_limit`).
+- [x] `npm view @oxunify/capsule-mcp version` answers `0.1.0`. **Done:** the package
+      was published on 2026-11-16 and then re-read from the registry outside the
+      session. `npm view @oxunify/capsule-mcp version` answers `0.1.0`; a clean
+      `npm install` into an empty directory completes an MCP handshake; and all three
+      tools answer: `verify_record` returns `verified` with both payments confirmed
+      on chain, `get_proof` returns `all_payments_verified_on_chain: true`, and
+      `price_my_limit` returns `$0.051` and `20.4x`. The same server also runs from
+      this repository with `npx -y github:unifyWeb3/capsule`.
 - [x] The live deployment serves the new `/cost` page. **Done:** deployed from the
       pushed commit, and `/cost`, `/api/limit-cost` and the 301 from `/cost.html`
       were re-read from outside the session afterwards.
@@ -229,13 +232,11 @@ stop and fix it: a video with a stale number is worse than no video.
   help. Nobody has done this but us, and it is the one thing that would prove "user
   readiness" instead of asserting it. The procedure, the exact prompt to paste, and the
   table to fill in are in `docs/STRANGER-TEST.md`, so all that is left is the person.
-- The npm publish: one command, `npm_config_otp=<code> npm run mcp:pack`, once an
-  authenticator app is enabled on the npm account. It is not on the critical path any
-  more: the tool runs from the repository with one command, and the npm package is for
-  people who prefer the registry.
 - Fields 14, 16, 17, 20, 21: the user's call.
-- The submission itself. **Do not submit on the strength of the artifact alone.** The
-  submission is an authorized action and the last step.
+- The submission: **filed by the user on 2026-11-16**, after the stated Nov 15 23:59
+  UTC hour. The form was still open when it was checked, and whether the organizers
+  accept a filing after the hour is their call. Everything below is the record of
+  what went in.
 
 ## Done since the last version of this pack
 
@@ -273,8 +274,8 @@ stop and fix it: a video with a stale number is worse than no video.
   exact payment on Base.
 - `/proof.json` now carries `checked_at`, when the chain was read, and is never
   served from a cache, so refreshing it always re-reads the chain.
-- The verifier is an **MCP tool on npm** (`@oxunify/capsule-mcp`), with a publish guard
-  that refuses to ship a broken build.
+- The verifier is an **MCP tool published on npm** (`@oxunify/capsule-mcp`, 0.1.0),
+  with a publish guard that refuses to ship a broken build.
 - The site is on **clean URLs**: `/runs`, `/run`, `/verify`, `/replay`, `/components`,
   `/docs/format`, `/docs/security-model`, and the old `.html` addresses redirect.
 - The logo is a **capsule** now, one SVG for every surface, including the favicon and
