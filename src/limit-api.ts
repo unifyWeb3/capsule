@@ -77,8 +77,10 @@ export interface LimitAnswer {
     source: "recorded_run" | "your_caps";
   };
   catalog: {
-    /** When the catalog was read. */
+    /** The catalog's own timestamp: when the service published its listing. */
     generated_at: string;
+    /** When this answer read the catalog. */
+    read_at: string;
     source: string;
     endpoints: number;
     /** Whether it was read live, or read from the snapshot this build carries. */
@@ -337,9 +339,11 @@ export async function priceLimit(
     choice === "live" || (choice === "auto" && basis === "your_facts");
   let live = false;
   let menu: Menu | null = null;
+  let readAt = new Date().toISOString();
   if (wantLive) {
     const reader = deps.live ?? loadLiveMenu;
     const liveMenu = await reader();
+    readAt = new Date().toISOString();
     if (liveMenu && liveMenu.endpoints.length) {
       menu = liveMenu;
       live = true;
@@ -365,11 +369,11 @@ export async function priceLimit(
   }
   if (live) {
     notes.push(
-      `Priced over the live Kite catalog, read over plain HTTPS with no key, as of ${menu.generated_at}. The prices are the catalog's own.`,
+      `Priced over the live Kite catalog, read over plain HTTPS with no key. Read at ${readAt}; the catalog's own listing was published at ${menu.generated_at}. The prices are the catalog's own.`,
     );
   } else if (wantLive) {
     notes.push(
-      `The live catalog could not be read just now, so this answer uses the snapshot this build carries (${menu.generated_at}).`,
+      `The live catalog could not be read just now, so this answer uses the snapshot this build carries (published ${menu.generated_at}).`,
     );
   }
   if (
@@ -415,6 +419,7 @@ export async function priceLimit(
     },
     catalog: {
       generated_at: menu.generated_at,
+      read_at: readAt,
       source: menu.source,
       endpoints: menu.endpoints.length,
       live,

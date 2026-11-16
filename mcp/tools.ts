@@ -59,10 +59,14 @@ export async function verifyRecord(input: {
  * What a set of caps costs.
  *
  * The solver prices the facts an answer needs against the caps a session
- * holds, over the catalog snapshot this package carries, and returns the
- * cheapest basket, what the caps forbade and what the forbidden part would
- * have cost. With no facts it prices the recorded run, which is the number
- * the project publishes.
+ * holds, and returns the cheapest basket, what the caps forbade and what the
+ * forbidden part would have cost. With no facts it prices the recorded run,
+ * which is the number the project publishes.
+ *
+ * The catalog it prices over is a choice: the snapshot this package carries,
+ * which is the catalog the recorded run used, or the live Kite catalog, read
+ * over plain HTTPS with no key. The answer says which one it used and when it
+ * was read.
  *
  * A cover is either demonstrated (the record shows the endpoint being chosen
  * for the fact) or declared (the merchant's own catalog text claims it), and

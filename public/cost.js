@@ -178,8 +178,8 @@ function render(answer) {
 
   const provenance = html`<p class="muted-mono">
     ${answer.catalog.live
-      ? html`Catalog read live today, as of ${answer.catalog.generated_at}: ${answer.catalog.endpoints} endpoints, every one priced by its merchant.`
-      : html`Catalog snapshot from ${answer.catalog.generated_at}: ${answer.catalog.endpoints} endpoints, every one priced by its merchant.`}
+      ? html`Live Kite catalog, published ${answer.catalog.generated_at}, read ${answer.catalog.read_at}: ${answer.catalog.endpoints} endpoints, every one priced by its merchant.`
+      : html`Catalog snapshot from ${answer.catalog.generated_at}, read ${answer.catalog.read_at}: ${answer.catalog.endpoints} endpoints, every one priced by its merchant.`}
     Solver: exact enumeration over fact subsets, no model in the loop.
   </p>`;
 

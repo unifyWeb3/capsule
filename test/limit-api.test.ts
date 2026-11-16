@@ -64,6 +64,9 @@ test("mcp price_my_limit: a caller's facts are priced against the caller's caps"
     facts: ["current ETH price and 24h change", "the risk factors nobody publishes"],
     per_tx_usd: 0.002,
     total_usd: 0.0025,
+    // The snapshot, so this test does not depend on a third party's uptime.
+    // The live catalog has its own test, with the reader stubbed.
+    catalog: "snapshot",
   })) as {
     basis: string;
     plan: {
@@ -78,4 +81,28 @@ test("mcp price_my_limit: a caller's facts are priced against the caller's caps"
   // The unknown fact is named, and it does not inflate the total.
   assert.deepEqual(answer.plan.unpriced_facts, ["the risk factors nobody publishes"]);
   assert.equal(answer.plan.limit_cost_usd, 0);
+});
+
+test("mcp price_my_limit: the answer says which catalog it used and when it read it", async () => {
+  const answer = (await priceMyLimit({ catalog: "snapshot" })) as {
+    catalog: {
+      generated_at: string;
+      read_at: string;
+      source: string;
+      endpoints: number;
+      live: boolean;
+    };
+    notes: string[];
+  };
+
+  assert.equal(answer.catalog.live, false);
+  assert.ok(answer.catalog.endpoints > 0);
+  // The catalog's own timestamp and the moment this answer read it are two
+  // different things, and the answer carries both.
+  assert.match(answer.catalog.generated_at, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(answer.catalog.read_at, /^\d{4}-\d{2}-\d{2}T/);
+  assert.ok(
+    !Number.isNaN(Date.parse(answer.catalog.read_at)),
+    "read_at has to be a timestamp a reader can parse",
+  );
 });
