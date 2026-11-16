@@ -150,7 +150,7 @@ record, arrives at **$0.051 and 20.4×**, the number the log measured. Two route
 number, one from the chain and one from the catalog, and a test that fails if they ever
 diverge. The live catalog in reach does not move it: a run's prices belong to its day.
 
-The same answer is available as the `price_my_limit` tool in the `capsule-mcp` package, so
+The same answer is available as the `price_my_limit` tool in the `@oxunify/capsule-mcp` package, so
 an agent can price its own limits before it asks for a session.
 
 ## The four anchors
@@ -235,7 +235,8 @@ npx -y github:unifyWeb3/capsule
 ```
 
 It runs the TypeScript in this repository, so the code that answers is the code you can
-read. The same three tools are packaged for npm as `capsule-mcp`.
+read. The same three tools are packaged for npm as `@oxunify/capsule-mcp`, so
+`npx -y @oxunify/capsule-mcp` is the same server from the registry.
 
 Or, from a clone:
 

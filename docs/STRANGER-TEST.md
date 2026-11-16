@@ -79,7 +79,7 @@ If the stranger is an agent rather than a person, the same test runs over MCP. T
 package installs with node and nothing else:
 
 ```bash
-npx -y capsule-mcp
+npx -y @oxunify/capsule-mcp
 ```
 
 Then ask it the same question with `verify_record`:

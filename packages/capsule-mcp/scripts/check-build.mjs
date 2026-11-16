@@ -79,10 +79,10 @@ const walk = (dir) => {
 if (fs.existsSync(DIST)) walk(DIST);
 
 if (problems.length) {
-  console.error("capsule-mcp: the build is not ready to publish");
+  console.error(`${manifest.name}: the build is not ready to publish`);
   for (const problem of problems) console.error(`  - ${problem}`);
   console.error("\nrun `npm run mcp:build` from the repository root and try again");
   process.exit(1);
 }
 
-console.log(`capsule-mcp ${manifest.version}: the build is complete`);
+console.log(`${manifest.name} ${manifest.version}: the build is complete`);

@@ -240,11 +240,25 @@ and the write-up are honest about it, and the README already says the host is no
 allowlisted. The review is the one thing on this list that no amount of our work
 can hurry.
 
-## H. Publishing `capsule-mcp` to npm
+## H. Publishing `@oxunify/capsule-mcp` to npm
 
 The package is built, guarded and rehearsed (`npm run mcp:pack:dry` ends with
-`+ capsule-mcp@0.1.0`, 21 files, 41.9 kB). What is left is npm's authentication and
-two-factor policy.
+`+ @oxunify/capsule-mcp@0.1.0`, 21 files, 41.9 kB). What is left is npm's name policy
+and one token.
+
+**The name is scoped, and that is npm's doing.** The unscoped `capsule-mcp` is refused:
+
+```
+npm error code E403
+npm error 403 Forbidden - PUT https://registry.npmjs.org/capsule-mcp - Package name too
+npm error similar to existing package capsulemcp; try renaming your package to
+npm error '@oxunify/capsule-mcp' and publishing with 'npm publish --access=public'
+```
+
+`capsulemcp` is somebody else's package (a CRM MCP server, `github.com/soil-dev/capsulemcp`),
+and npm's similarity rule will not have two names that close. npm names the fix itself,
+so the package is published as `@oxunify/capsule-mcp`: the scope is the account's, the
+command is still `capsule-mcp`, and the install line is `npx -y @oxunify/capsule-mcp`.
 
 **Step 0, on Nov 16: the CLI token is rejected.** `npm whoami` answers
 `401 Unauthorized`, and `npm profile get 2fa --json` answers the same. The token in
@@ -289,10 +303,11 @@ are two ways to mint one.
 **Path A, in the browser (no password prompt, about a minute).**
 
 1. Open <https://www.npmjs.com/settings/access-tokens> and generate a token:
-   - Packages: `capsule-mcp`
-   - Permissions: **Read & write**
+   - Packages: leave empty, or `capsule-mcp`
+   - Organizations: **`@oxunify`**, read and write
    - Tick **Bypass 2FA**
-   - Expiry: the longest the form allows, or no expiry
+   - Expiry: the longest the form allows (npm's notice says bypass-2FA tokens stop
+     being allowed to publish directly in **January 2027**)
 2. npm shows the token once. Copy it.
 
 **Path B, in the terminal (it asks for the npm password).**
@@ -302,6 +317,11 @@ npm token create --name capsule-publish --packages capsule-mcp \
   --packages-and-scopes-permission read-write --bypass-2fa
 ```
 
+A token made this way has `{"name": null, "type": "package"}` and
+`{"name": "ox_unify", "type": "org"}` in its scope list, which is npm's way of saying
+it can write any package and the whole `@oxunify` scope. That is exactly what a
+scoped publish needs, so no new token is required for the rename.
+
 Either way, put the token in `~/.npmrc`, replacing the `_authToken` line. This form
 keeps it out of the shell history:
 
@@ -309,8 +329,8 @@ keeps it out of the shell history:
 read -rs TOKEN && npm config set //registry.npmjs.org/:_authToken "$TOKEN" && unset TOKEN
 ```
 
-Then publish. The token is scoped to `capsule-mcp` and can write it, which is all a
-publish needs:
+Then publish. The token can write the `@oxunify` scope, which is all a scoped publish
+needs:
 
 ```bash
 cd /home/unify/serv
@@ -320,8 +340,8 @@ npm run mcp:pack
 Check it landed:
 
 ```bash
-npm view capsule-mcp version      # expect 0.1.0
-npx -y capsule-mcp                # the server starts and waits for MCP input
+npm view @oxunify/capsule-mcp version   # expect 0.1.0
+npx -y @oxunify/capsule-mcp             # the server starts and waits for MCP input
 ```
 
 To go back to a session token afterwards (the one `npm login --auth-type=web` writes),

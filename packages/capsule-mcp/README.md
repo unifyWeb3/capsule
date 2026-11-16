@@ -1,4 +1,4 @@
-# capsule-mcp
+# @oxunify/capsule-mcp
 
 Capsule's spending-record verifier and its limit calculator, as an MCP server.
 
@@ -11,13 +11,13 @@ It can also price a spending limit before anyone signs one: given the facts an a
 ## Install
 
 ```bash
-npm install -g capsule-mcp
+npm install -g @oxunify/capsule-mcp
 ```
 
 or run it without installing anything:
 
 ```bash
-npx -y capsule-mcp
+npx -y @oxunify/capsule-mcp
 ```
 
 ## Connect it
@@ -29,13 +29,13 @@ Any MCP client that speaks stdio. For Claude Desktop, in `claude_desktop_config.
   "mcpServers": {
     "capsule": {
       "command": "npx",
-      "args": ["-y", "capsule-mcp"]
+      "args": ["-y", "@oxunify/capsule-mcp"]
     }
   }
 }
 ```
 
-For an agent that talks MCP over stdio, the command is `capsule-mcp` (or `npx -y capsule-mcp`). There is nothing else to configure.
+For an agent that talks MCP over stdio, the command is `capsule-mcp` (or `npx -y @oxunify/capsule-mcp`). There is nothing else to configure.
 
 ## The three tools
 

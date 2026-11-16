@@ -1,5 +1,5 @@
 {
-  "name": "capsule-mcp",
+  "name": "@oxunify/capsule-mcp",
   "version": "0.1.0",
   "description": "Capsule's spending-record verifier as an MCP server: check any agent's published spending record, payments re-read from the chain. No wallet, no account, no session.",
   "type": "module",

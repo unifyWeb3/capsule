@@ -116,7 +116,7 @@ and footer on all eight pages, the favicon, the touch icon, and the share card.
 > MCP server with three tools, and one command runs it with no wallet, no account and
 > no session: `npx -y github:unifyWeb3/capsule`. It runs the TypeScript in this
 > repository, so the code that answers is the code a judge can read. The same three
-> tools are packaged for npm as `capsule-mcp`. An agent can check a published spending
+> tools are packaged for npm as `@oxunify/capsule-mcp`. An agent can check a published spending
 > record before it trusts one, or price its own limits before it asks for a session. The
 > URL of the log is the credential.
 >
@@ -179,7 +179,7 @@ Reply 2, the tool (196 characters):
 > The URL is the credential.
 
 That command runs the TypeScript in this repository, so it works whether or not the npm
-publish has happened. If it has, `npx -y capsule-mcp` is the same three tools from the
+publish has happened. If it has, `npx -y @oxunify/capsule-mcp` is the same three tools from the
 registry.
 
 Reply 3, the calculator, if you want to add it (224 characters):
@@ -214,7 +214,7 @@ stop and fix it: a video with a stale number is worse than no video.
       `https://x.com/oxunify/status/2121633772202602884`
 - [x] Upload the video to YouTube, then paste its URL into field 10. **Done:**
       `https://youtu.be/nT8bjhT7WYY`
-- [ ] `npm view capsule-mcp version` answers `0.1.0`. If the publish has not
+- [ ] `npm view @oxunify/capsule-mcp version` answers `0.1.0`. If the publish has not
       happened yet, nothing else has to change: the write-up and reply 2 now point at
       `npx -y github:unifyWeb3/capsule`, which runs the tool straight from this
       repository and was verified end to end (handshake, three tools, `$0.051` and
@@ -251,7 +251,7 @@ stop and fix it: a video with a stale number is worse than no video.
 - The **limit calculator**: `/cost` prices a set of caps for a set of facts over the
   catalog, with an exact solver and the recorded run as its regression test. The
   same answer is `GET /api/limit-cost` and the `price_my_limit` tool in
-  `capsule-mcp`.
+  `@oxunify/capsule-mcp`.
 - The **90-second video is published**: `https://youtu.be/nT8bjhT7WYY`.
 - The **X post is published**, one post tagging `@openservai`:
   `https://x.com/oxunify/status/2121633772202602884`.
@@ -273,8 +273,8 @@ stop and fix it: a video with a stale number is worse than no video.
   exact payment on Base.
 - `/proof.json` now carries `checked_at`, when the chain was read, and is never
   served from a cache, so refreshing it always re-reads the chain.
-- The verifier is an **MCP tool on npm** (`capsule-mcp`), with a publish guard that
-  refuses to ship a broken build.
+- The verifier is an **MCP tool on npm** (`@oxunify/capsule-mcp`), with a publish guard
+  that refuses to ship a broken build.
 - The site is on **clean URLs**: `/runs`, `/run`, `/verify`, `/replay`, `/components`,
   `/docs/format`, `/docs/security-model`, and the old `.html` addresses redirect.
 - The logo is a **capsule** now, one SVG for every surface, including the favicon and
