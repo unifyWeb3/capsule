@@ -4,12 +4,16 @@
   "private": true,
   "type": "module",
   "description": "A spend-control and payment-attestation layer for AI agents: SERV Reasoning decides, a Kite Passport session enforces the money.",
+  "bin": {
+    "capsule-mcp": "./packages/capsule-mcp/bin/capsule-mcp.mjs"
+  },
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "dev": "node --env-file-if-exists=.env --import tsx --watch src/main.ts",
     "start": "node --env-file-if-exists=.env --import tsx src/main.ts",
+    "prepare": "node scripts/build-mcp-package.mjs",
     "demo": "node --env-file-if-exists=.env --import tsx scripts/run-demo.ts",
     "claims": "node --env-file-if-exists=.env --import tsx scripts/generate-claims.ts",
     "test": "node --import tsx --test test/*.test.ts",

@@ -219,7 +219,8 @@ stop and fix it: a video with a stale number is worse than no video.
 
 - The stranger test: give somebody the `/verify` URL and watch them use it without
   help. Nobody has done this but us, and it is the one thing that would prove "user
-  readiness" instead of asserting it.
+  readiness" instead of asserting it. The procedure, the exact prompt to paste, and the
+  table to fill in are in `docs/STRANGER-TEST.md`, so all that is left is the person.
 - The npm publish: one command, `npm_config_otp=<code> npm run mcp:pack`, once an
   authenticator app is enabled on the npm account. If it does not happen, cut the
   `capsule-mcp` sentence from the write-up in field 7 and from reply 2.
