@@ -179,7 +179,7 @@ Reply 2, the tool (196 characters):
 > The URL is the credential.
 
 That command runs the TypeScript in this repository, so it works with no registry at all.
-The same three tools are on npm as `@oxunify/capsule-mcp` (0.1.0), published 2026-11-16
+The same three tools are on npm as `@oxunify/capsule-mcp` (0.1.3), published 2026-11-16
 and verified from a clean directory against the registry, so `npx -y
 @oxunify/capsule-mcp` is the same server from the registry.
 
@@ -215,9 +215,9 @@ stop and fix it: a video with a stale number is worse than no video.
       `https://x.com/oxunify/status/2121633772202602884`
 - [x] Upload the video to YouTube, then paste its URL into field 10. **Done:**
       `https://youtu.be/nT8bjhT7WYY`
-- [x] `npm view @oxunify/capsule-mcp version` answers `0.1.0`. **Done:** the package
+- [x] `npm view @oxunify/capsule-mcp version` answers `0.1.3`. **Done:** the package
       was published on 2026-11-16 and then re-read from the registry outside the
-      session. `npm view @oxunify/capsule-mcp version` answers `0.1.0`; a clean
+      session. `npm view @oxunify/capsule-mcp version` answers `0.1.3`; a clean
       `npm install` into an empty directory completes an MCP handshake; and all three
       tools answer: `verify_record` returns `verified` with both payments confirmed
       on chain, `get_proof` returns `all_payments_verified_on_chain: true`, and
@@ -230,9 +230,12 @@ stop and fix it: a video with a stale number is worse than no video.
 ## Still open
 
 - The stranger test: give somebody the `/verify` URL and watch them use it without
-  help. Nobody has done this but us, and it is the one thing that would prove "user
-  readiness" instead of asserting it. The procedure, the exact prompt to paste, and the
-  table to fill in are in `docs/STRANGER-TEST.md`, so all that is left is the person.
+  help. **The agent version has been run** (2026-11-16) and is recorded in
+  `docs/STRANGER-TEST.md`; it found two defects, a first-call timeout and a chain
+  read that could fail, and both are fixed. The person version has not happened,
+  and it is the one thing that would prove "user readiness" instead of asserting it.
+  The procedure, the exact prompt to paste, and the table to fill in are in
+  `docs/STRANGER-TEST.md`, so all that is left is the person.
 - Fields 14, 16, 17, 20, 21: the user's call.
 - The submission: **filed by the user on 2026-11-16**, after the stated Nov 15 23:59
   UTC hour. The form was still open when it was checked, and whether the organizers
@@ -275,7 +278,7 @@ stop and fix it: a video with a stale number is worse than no video.
   exact payment on Base.
 - `/proof.json` now carries `checked_at`, when the chain was read, and is never
   served from a cache, so refreshing it always re-reads the chain.
-- The verifier is an **MCP tool published on npm** (`@oxunify/capsule-mcp`, 0.1.0),
+- The verifier is an **MCP tool published on npm** (`@oxunify/capsule-mcp`, 0.1.3),
   with a publish guard that refuses to ship a broken build.
 - The site is on **clean URLs**: `/runs`, `/run`, `/verify`, `/replay`, `/components`,
   `/docs/format`, `/docs/security-model`, and the old `.html` addresses redirect.

@@ -11,6 +11,8 @@
 //   3. the receipts the server reads at run time travelled with it
 //   4. the licence travelled with it
 //   5. the version in the manifest is the version being published
+//   6. the built server answers a handshake and says that same version
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,6 +31,7 @@ function need(relative, why) {
 need("bin/capsule-mcp.mjs", "the published executable");
 need("dist/mcp/server.js", "the compiled MCP server");
 need("dist/mcp/tools.js", "the compiled tool handlers");
+need("dist/mcp/version.js", "the module that reads the published version");
 need("dist/docs/receipts.json", "the recorded run's receipts, read by get_proof at run time");
 need("dist/docs/menu.json", "the catalog snapshot, read by price_my_limit at run time");
 need("LICENSE", "the licence the manifest claims");
@@ -64,6 +67,7 @@ const allowed = new Set([
   ...MODULES.map((m) => path.join("dist", m)),
   path.join("dist", "mcp", "server.js"),
   path.join("dist", "mcp", "tools.js"),
+  path.join("dist", "mcp", "version.js"),
   path.join("dist", "docs", "receipts.json"),
   path.join("dist", "docs", "menu.json"),
 ]);
@@ -77,6 +81,67 @@ const walk = (dir) => {
   }
 };
 if (fs.existsSync(DIST)) walk(DIST);
+
+/**
+ * The version the built server answers with.
+ *
+ * The server reads its version from the manifest at start-up. If the build
+ * cannot find it, the server answers a stale number, and a judge comparing
+ * the handshake with `npm view` sees two versions. So the build asks the
+ * server, the same way a client does.
+ */
+function serverVersion(serverPath) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [serverPath], {
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    let out = "";
+    const finish = (value) => {
+      clearTimeout(timer);
+      child.kill();
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(null), 10_000);
+    child.stdout.on("data", (chunk) => {
+      out += chunk;
+      for (const line of out.split("\n")) {
+        if (!line.trim().startsWith("{")) continue;
+        try {
+          const message = JSON.parse(line);
+          const version = message?.result?.serverInfo?.version;
+          if (typeof version === "string") return finish(version);
+        } catch {
+          // Not the line we are after; keep reading.
+        }
+      }
+    });
+    child.on("exit", () => finish(null));
+    child.stdin.write(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2024-11-05",
+          capabilities: {},
+          clientInfo: { name: "check-build", version: "1" },
+        },
+      }) + "\n",
+    );
+  });
+}
+
+const server = path.join(DIST, "mcp", "server.js");
+if (fs.existsSync(server) && manifest.version) {
+  const answered = await serverVersion(server);
+  if (!answered) {
+    problems.push("the built server did not answer a handshake");
+  } else if (answered !== manifest.version) {
+    problems.push(
+      `the built server reports ${answered}, the manifest says ${manifest.version}`,
+    );
+  }
+}
 
 if (problems.length) {
   console.error(`${manifest.name}: the build is not ready to publish`);

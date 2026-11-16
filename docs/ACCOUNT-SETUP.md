@@ -242,12 +242,12 @@ can hurry.
 
 ## H. Publishing `@oxunify/capsule-mcp` to npm
 
-**Done, 2026-11-16.** The package is on the registry as `@oxunify/capsule-mcp@0.1.0`,
+**Done, 2026-11-16.** The package is on the registry as `@oxunify/capsule-mcp@0.1.3`,
 and it was re-read from the registry outside the session before anything in this
 repository claimed it was there:
 
 ```bash
-npm view @oxunify/capsule-mcp version        # 0.1.0
+npm view @oxunify/capsule-mcp version        # 0.1.3
 npx -y @oxunify/capsule-mcp                  # handshake, then the three tools
 ```
 
@@ -255,6 +255,21 @@ A clean `npm install @oxunify/capsule-mcp` into an empty directory, then the MCP
 handshake, then all three tools: `verify_record` answers `verified` with both payments
 confirmed on chain, `get_proof` answers `all_payments_verified_on_chain: true`, and
 `price_my_limit` answers `$0.051` and `20.4x`. No wallet, no account, no session.
+
+**The version history, and why there is more than one.** `0.1.0` was the first
+publish. The agent version of the stranger test (`docs/STRANGER-TEST.md`) then found
+two things that would lose a judge on the first try, and each was fixed and
+published as a patch:
+
+| Version | What changed | Why |
+| --- | --- | --- |
+| `0.1.0` | the first publish | the package as built and guarded |
+| `0.1.1` | a log fetch that timed out is tried once more, and the error says what to do | the first `verify_record` call came back "the request timed out", and the second call, seconds later, verified the same log |
+| `0.1.2` | the server reads its version from the package manifest, and the publish guard asks the built server for it | the server answered `0.1.0` while the registry served `0.1.1` |
+| `0.1.3` | a chain read that fails is tried once more | one verification in about thirty came back `partially_verified` because the public RPC did not answer, not because the payment was in doubt |
+
+The guard now starts the built server and asks it for its version, so a package
+that would report the wrong one cannot be published.
 
 **The name is scoped, and that is npm's doing.** The unscoped `capsule-mcp` was refused:
 
@@ -316,7 +331,7 @@ cd /home/unify/serv
 npm run mcp:pack
 ```
 
-That answers `+ @oxunify/capsule-mcp@0.1.0`. npm's own banner says bypass-2FA tokens
+That answers `+ @oxunify/capsule-mcp@0.1.3`. npm's own banner says bypass-2FA tokens
 stop being allowed to publish directly in **January 2027**, and the token above expires
 2027-02-14, so the next release needs the other route: add a security key at
 <https://npmjs.com/settings/oxunify/tfa>, then publish with an OTP.

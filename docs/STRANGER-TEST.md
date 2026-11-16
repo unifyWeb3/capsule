@@ -61,6 +61,33 @@ is evidence, even when it is unflattering.
 | Date | Who | What they did | What they got wrong | What they said they would do |
 | --- | --- | --- | --- | --- |
 | | | | | |
+| 2026-11-16 | **an agent with no prior context, over MCP** (not a person) | installed the published package with `npx -y @oxunify/capsule-mcp`, found `verify_record` in `tools/list`, verified the foreign-format log, and reported: two purchases of $0.001 each, two refusals worth $0.051, the total budget $0.0025, and 20.4x | the **first** call came back `could not verify that log: the request timed out`; it tried again and the second call verified the same log. It needed the tool description to know which tool was the right one | "the payments are chain-verified, the refusals are the record owner's account, and the hash chain was skipped because this log is not in Capsule's format" |
+
+**The person version has not happened.** An agent is not a person, and this row is
+not the stranger test the rubric asks for: it is the closest thing available without
+a human, and it is recorded as what it is. The human procedure above is unchanged.
+
+### What the agent run found, and what was done about it
+
+Three things came out of it, and all three are fixed:
+
+1. **The first call could time out and lose the judge.** The log fetch has an
+   8-second timeout, and the first call from a cold start hit it. The fetch is now
+   tried once more when it times out (`src/net.ts`, `withTimeoutRetry`), and a host
+   that still does not answer gets an error that says so: "the log host did not
+   answer in time; try again in a moment". Published in 0.1.1.
+2. **The chain read could fail and turn a proof into a partial one.** One
+   verification in about thirty came back `partially_verified` because the public
+   Base RPC did not answer, not because the payment was in doubt. A failure to ask
+   is not a fact about the chain, so every chain read is now tried twice
+   (`src/proof.ts`). Published in 0.1.3.
+3. **The server reported a version that was not its own.** It said `0.1.0` while
+   the registry served `0.1.1`. The version now comes from the package manifest at
+   start-up, and the publish guard asks the built server for its version and
+   refuses to publish if it does not match the manifest. Published in 0.1.2.
+
+The three fixes are the point of the test. A stranger who cannot get an answer on
+the first try is a stranger who never sees the proof.
 
 ## The failures that are worth fixing
 
@@ -91,3 +118,9 @@ Then ask it the same question with `verify_record`:
 An agent that runs this and reports "the payments are chain-verified, the refusals are
 the record owner's account, and the hash chain was skipped because this log is not in
 Capsule's format" has passed. An agent that reports everything as verified has failed.
+
+**This version has been run**, on 2026-11-16, and the result is in the table above.
+Give the agent the command and the log and nothing else: no description of what the
+tool does, no hint about the right answer, and no permission to read the
+repository. The agent version is worth running before the person version, because
+it is the one that finds the defects that would lose a judge on the first try.

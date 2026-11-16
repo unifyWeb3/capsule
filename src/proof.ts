@@ -225,17 +225,45 @@ interface ChainReceipt {
   logs: Array<{ address?: string; topics: string[]; data: string }>;
 }
 
+/** How long one chain read is given before it is called a timeout. */
+const RPC_TIMEOUT_MS = 12_000;
+
+/**
+ * How many times a chain read is attempted before it is called unavailable.
+ *
+ * The public Base RPC has no service level: it has answered a burst with a
+ * 5xx, and a dropped connection is not a fact about the chain either. The
+ * stranger test caught it: one verification out of about thirty came back
+ * `partially_verified` because the read failed, not because the payment was
+ * in doubt. So the read is tried once more.
+ *
+ * What the chain says comes from the answer, never from a failure to ask: if
+ * both attempts fail, the step is `unavailable` with the reason, which is
+ * what it said before.
+ */
+const RPC_ATTEMPTS = 2;
+
 async function rpc<T>(url: string, method: string, params: unknown[]): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) throw new Error(`RPC ${method} HTTP ${response.status}`);
-  const body = (await response.json()) as { result?: T; error?: { message: string } };
-  if (body.error) throw new Error(`RPC ${method}: ${body.error.message}`);
-  return body.result as T;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < RPC_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+      });
+      if (!response.ok) throw new Error(`RPC ${method} HTTP ${response.status}`);
+      const body = (await response.json()) as { result?: T; error?: { message: string } };
+      if (body.error) throw new Error(`RPC ${method}: ${body.error.message}`);
+      return body.result as T;
+    } catch (error) {
+      lastError = error;
+      // Try once more, then give up and let the caller say the chain could
+      // not be read.
+    }
+  }
+  throw lastError;
 }
 
 /**

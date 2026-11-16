@@ -25,13 +25,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { getProof, priceMyLimit, verifyRecord } from "./tools.js";
+import { toolVersion } from "./version.js";
 
 function asText(payload: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }] };
 }
 
 const server = new McpServer(
-  { name: "capsule", version: "0.1.0" },
+  { name: "capsule", version: toolVersion() },
   {
     capabilities: { tools: {} },
     instructions:

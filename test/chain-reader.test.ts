@@ -139,3 +139,62 @@ test("a head inside its time-to-live is answered from the cache", async () => {
     rpc.close();
   }
 });
+
+test("a chain read that fails once is tried again", async () => {
+  // The public Base RPC has no service level. A transient failure must not
+  // turn a payment that is on chain into one that "could not be read".
+  let served = 0;
+  const server = createServer((request, response) => {
+    let body = "";
+    request.on("data", (chunk) => (body += chunk));
+    request.on("end", () => {
+      served += 1;
+      if (served === 1) {
+        response.writeHead(503, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "upstream is busy" }));
+        return;
+      }
+      const parsed = JSON.parse(body) as { id: number; method: string };
+      const result =
+        parsed.method === "eth_getTransactionReceipt"
+          ? { blockNumber: "0x35c4a01", status: "0x1", logs: [] }
+          : "0x35c4a10";
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ jsonrpc: "2.0", id: parsed.id, result }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  const port = typeof address === "object" && address ? address.port : 0;
+  try {
+    const reader = readerFor(`http://127.0.0.1:${port}`);
+    const receipt = await reader.receipt("0x" + "ab".repeat(32));
+    assert.ok(receipt, "the second attempt should have the receipt");
+    assert.equal(served, 2, "the read was tried twice");
+  } finally {
+    server.close();
+  }
+});
+
+test("a chain read that keeps failing is reported, not retried forever", async () => {
+  let served = 0;
+  const server = createServer((request, response) => {
+    let body = "";
+    request.on("data", (chunk) => (body += chunk));
+    request.on("end", () => {
+      served += 1;
+      response.writeHead(503, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: "upstream is busy" }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  const port = typeof address === "object" && address ? address.port : 0;
+  try {
+    const reader = readerFor(`http://127.0.0.1:${port}`);
+    await assert.rejects(() => reader.receipt("0x" + "cd".repeat(32)), /HTTP 503/);
+    assert.equal(served, 2, "the read is tried twice and then stops");
+  } finally {
+    server.close();
+  }
+});
