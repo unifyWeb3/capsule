@@ -242,8 +242,21 @@ can hurry.
 
 ## H. Publishing `capsule-mcp` to npm
 
-The package is built, guarded and rehearsed. The only thing left is npm's
-two-factor policy, which is the error you hit:
+The package is built, guarded and rehearsed (`npm run mcp:pack:dry` ends with
+`+ capsule-mcp@0.1.0`, 21 files, 41.9 kB). What is left is npm's authentication and
+two-factor policy.
+
+**Step 0, on Nov 16: the CLI token is rejected.** `npm whoami` answers
+`401 Unauthorized`, and `npm profile get 2fa --json` answers the same. The token in
+`~/.npmrc` no longer authenticates, so the publish fails before the 2FA check is even
+reached. Log in again first:
+
+```bash
+npm login --auth-type=web      # prints a URL; approve it in the browser
+npm whoami                     # expect: oxunify
+```
+
+**Step 1, the second factor.** The original error was this:
 
 ```
 npm error code E403
@@ -255,13 +268,18 @@ That is npm refusing the publish because the account has no second factor on the
 write. The package name is still free (`capsule-mcp` answers 404), so nothing was
 consumed and nothing needs cleaning up.
 
-The account's own profile says so: `npm profile get 2fa --json` answers
+The account's own profile said so: `npm profile get 2fa --json` answered
 `"tfa": false`. npm 11.19.1 is installed, and it knows both paths.
 
 **Path A, an authenticator app (about two minutes).**
 
-1. Open <https://www.npmjs.com/settings/access-tokens> and enable two-factor
-   authentication with an authenticator app.
+1. Turn on two-factor authentication for writes:
+   ```bash
+   npm profile enable-2fa auth-and-writes
+   ```
+   npm prints a QR code and an `otpauth://` URL. Scan it with an authenticator app,
+   then paste the six-digit code it shows when npm asks. The same thing in the
+   browser: <https://www.npmjs.com/settings/access-tokens>.
 2. Publish with the six-digit code it shows:
 
    ```bash
@@ -303,6 +321,11 @@ npx -y capsule-mcp                # the server starts and waits for MCP input
 
 The publish runs `npm run mcp:build` first, so the tarball that goes out is always
 the current code, and the guard refuses to publish if the build is incomplete.
+
+**This is not on the critical path.** The same three tools run straight from the
+repository with `npx -y github:unifyWeb3/capsule`, verified end to end from a clean
+directory: handshake, three tools, and `price_my_limit` returning `$0.051` and
+`20.4x`. The npm package is for people who prefer the registry.
 
 ---
 
