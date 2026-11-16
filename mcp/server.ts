@@ -35,7 +35,7 @@ const server = new McpServer(
   {
     capabilities: { tools: {} },
     instructions:
-      "Use verify_record before paying, onboarding or trusting an agent that spends money: it re-reads the record's payments from the chain and says exactly which halves are proof and which are the owner's claim. Use get_proof for Capsule's own recorded run. Use price_my_limit when an agent asks what its spending cap costs: it solves for the cheapest basket of catalog endpoints that covers the facts, names the cap that forbade each one, and prices what was forbidden.",
+      "Use verify_record before paying, onboarding or trusting an agent that spends money: it re-reads the record's payments from the chain and says exactly which halves are proof and which are the owner's account. Use get_proof for Capsule's own recorded run. Use price_my_limit when an agent asks what its spending cap costs: it solves for the cheapest basket of catalog endpoints that covers the facts, names the cap that forbade each one, and prices what was forbidden.",
   },
 );
 
@@ -44,7 +44,7 @@ server.registerTool(
   {
     title: "Verify a published spending record",
     description:
-      "Verify any agent's published spending record. Fetches the log over https with an SSRF-guarded, pinned-address fetch, checks its hash chain when it is in Capsule's format, re-reads every payment off the chain, and prices the refusals from the log. Returns a machine-readable proof: what was bought, what was refused, what the limit cost. The refusals are reported as the owner's claim: a refusal leaves no transaction; everything checkable is checked.",
+      "Verify any agent's published spending record. Fetches the log over https with an SSRF-guarded, pinned-address fetch, checks its hash chain when it is in Capsule's format, re-reads every payment off the chain, and prices the refusals from the log. Returns a machine-readable proof: what was bought, what was refused, what the limit cost. The refusals are reported as the owner's account: a refusal leaves no transaction, and everything else checkable is checked.",
     inputSchema: {
       log_url: z
         .string()

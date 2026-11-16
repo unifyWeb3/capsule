@@ -2,7 +2,7 @@
 
 Capsule's spending-record verifier and its limit calculator, as an MCP server.
 
-Before an agent pays, onboards, or trusts another agent that spends money, it can check that agent's published spending record first. Capsule fetches the record over https, re-reads every payment from Base mainnet, checks the hash chain when the log is in Capsule's format, and prices the refusals. The answer says which half is proof and which half is the owner's claim.
+Before an agent pays, onboards, or trusts another agent that spends money, it can check that agent's published spending record first. Capsule fetches the record over https, re-reads every payment from Base mainnet, checks the hash chain when the log is in Capsule's format, and prices the refusals. The answer says which half is proof and which half is the owner's account.
 
 It can also price a spending limit before anyone signs one: given the facts an answer needs and the caps a session would hold, it solves for the cheapest basket of catalog endpoints, names the cap that forbade each one, and prices what was forbidden.
 
@@ -63,6 +63,7 @@ Prices what a set of caps costs for a set of facts.
 | `facts` | array of strings, optional | the facts the answer needs. Omit to price Capsule's own recorded run. |
 | `per_tx_usd` | number, optional | the most one call may cost. Defaults to the recorded run's $0.002. |
 | `total_usd` | number, optional | the most the session may spend in total. Defaults to the recorded run's $0.0025. |
+| `catalog` | string, optional | `live`, `snapshot` or `auto`. `live` prices over the Kite service catalog as it stands today, read over plain HTTPS with no key. `snapshot` prices over the catalog of the recorded run's day. `auto` (the default) prices the recorded run over its own snapshot and a caller's own facts over the live catalog. |
 
 The solver is exact: it enumerates the subsets of the facts, costs the cheapest catalog endpoint that covers each one, takes the basket that fits inside the caps, and reports what is left over. No model is in the loop, so the same inputs always give the same answer.
 
@@ -72,9 +73,9 @@ With no arguments it prices the recorded run: $0.051 of refused evidence against
 
 ## What it does not prove
 
-The refusals are the record owner's claim, because a refusal leaves no transaction. The payments are chain-verified. The hash chain is checked only when the log is in Capsule's format. This is the same asymmetry the web verifier states, and it is deliberate.
+The refusals are the record owner's account, because a refusal leaves no transaction. For Capsule's own run the payment network's own ledger corroborates them: it holds every payment the session made and none for the two refusals. It does not attest them, and there is no transaction that says "I was refused". The payments are chain-verified. The hash chain is checked only when the log is in Capsule's format. This is the same asymmetry the web verifier states, and it is deliberate.
 
-A cover in the calculator is either demonstrated or declared. A declared cover is the merchant's own catalog text, not a purchase, and the catalog it is priced against is a snapshot, so its prices are the prices of that day.
+A cover in the calculator is either demonstrated or declared. A declared cover is the merchant's own catalog text, not a purchase. Over the live catalog the prices are today's; over the snapshot they are the prices of that day, which is why the recorded run keeps its snapshot.
 
 ## Environment
 

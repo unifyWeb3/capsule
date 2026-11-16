@@ -285,7 +285,7 @@ export function surfaceProps(proof) {
     {
       kind: "What we do not prove",
       value: "/docs/security-model",
-      detail: "The refusals are the owner's claim. Here is the whole of it.",
+      detail: "The refusals are corroborated, not attested. Here is the whole of it.",
       href: "/docs/security-model",
     },
     {

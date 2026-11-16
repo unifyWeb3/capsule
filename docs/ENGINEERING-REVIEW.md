@@ -445,26 +445,30 @@ judge who wants one table instead of three.
 | The limit calculator: the price of a limit, solved rather than asserted | `src/limit-cost.ts`, `src/limit-api.ts`, `GET /api/limit-cost`, `/cost`, `price_my_limit` | the solver is exact enumeration over the subsets of the facts; the recorded run is its regression test, and the two agree at `$0.051` and `20.4x` |
 | One canonical address for the whole site | `public/*.html`, `public/sitemap.xml`, `public/robots.txt`, `test/share.test.ts` | every page states its canonical URL and its card's title and sentence; a test reads the served files and fails if a page loses them |
 | Clean addresses, old addresses preserved | `src/app.ts`, `vercel.json`, `test/addresses.test.ts` | nine legacy `.html` addresses answer 301 with their query string; the clean addresses are the only ones in the rendered links |
+| The live catalog: today's prices, read from the public catalog | `src/catalog-live.ts`, `GET /api/limit-cost?catalog=live`, `/cost` | the Kite discovery endpoint is a public read; the reader has a timeout, one retry, a five-minute cache and a fallback that announces itself; the recorded run still answers at `$0.051` and `20.4x` over the catalog of its day, which is its regression test |
+| The payment network's ledger, reconciled against the record | `src/ledger.ts`, `scripts/capture-passport-ledger.mjs`, `GET /evidence.json`, `docs/passport-ledger.json` | 7 attempts checked against the Passport's own payment records: 2 refusals with no payment, 0 disagreements, the totals agree at `$0.002`, a passkey-attested approval, and the same `$0.05` endpoint paid under the larger cap; a test reads the published file and fails if an account identifier appears in it |
 
 ## 10.2 The numbers, now
 
 | Gate | Result |
 | --- | --- |
-| `npm test` | 84/84 |
+| `npm test` | 102/102 |
 | `npx tsc --noEmit` | clean |
 | `npm run verify` | 16/16 against the live deployment |
 | `npm run markup` | 9/9 on the front end's escaping layer |
 | `npm run audit` | 12 pages × 2 viewports: no findings |
 | `npm run claims` + `npm run readme` | regenerate byte-identical output |
-| The MCP tarball | 20 files, installs clean, three tools answer |
+| The MCP tarball | 21 files, installs clean, three tools answer |
 
 ## 10.3 What is still open, and what each one would take
 
 | Problem | Why it is open | What it would take |
 | --- | --- | --- |
-| The refusals are not chain-verified | there is nothing to anchor them to | an attestation transaction per refusal, signed by the agent. Needs the owner's wallet and a few cents of gas |
+| The refusals are not chain-verified | a refusal leaves no transaction, and the payment network's ledger corroborates it by the absence of a payment rather than attesting it | an attestation transaction per refusal, signed by the agent. Needs the owner's wallet and a few cents of gas |
 | `capsule-mcp` is not on npm yet | npm will not publish without a second factor on the write, and the account has none (`npm profile get 2fa` answers `tfa: false`) | one command from the user: `npm_config_otp=<code> npm run mcp:pack`, or a granular token with "bypass 2FA" |
 | Settlement has never executed against our own host | the host is not on the Passport allowlist, ticket GOK-557, a review in progress | the review to clear. The 402 challenge is verified; only the settlement is unproven |
+| The calculator has a third live upstream | the Kite discovery backend is a new dependency at request time, and a serverless instance reads it per cold start | it is already covered: a timeout, one retry, and a fallback to the snapshot that says so. What is left is a shared cache of the live catalog, which matters only at volume |
+| The ledger is a snapshot too | the Passport's activity ledger is captured on one day, and a later reader cannot ask the network for an older session's record | the capture is a file with a date on it, so the reader knows exactly how old the second source is. A live capture would need the owner's account, which is the owner's to give |
 | Everything is a file in the repository | there is no database, by design: the owner keeps their data | a store, if we ever want to host other people's records rather than fetch them. `docs/ARCHITECTURE.md` §5 has the schema; §8.4 says when to build it |
 | The chain reads are per-instance | a serverless instance is evicted, so a cold instance re-reads | a shared verdict store. The interface is designed (`docs/ARCHITECTURE.md` §7.1); the threshold is volume, not difficulty |
 | The public Base RPC has no service level | it is free, rate-limited, and it timed out once under a burst | `BASE_RPC_URL` now exists, so the swap is configuration and not code. The swap should happen before volume |
@@ -475,12 +479,19 @@ judge who wants one table instead of three.
 
 The measurement became a product. A number that existed only in one log, from
 one run, on one day, is now something a visitor can compute for their own facts
-and their own caps, over the same catalog snapshot, with the same solver. The
+and their own caps, over the catalog of today, with the same solver. The
 solver's answer for the recorded run is the number the log measured, so the idea
 is falsifiable against evidence rather than asserted.
 
-The three things this pass did **not** do, and will not pretend to have done: the
-refusals are still the owner's claim, settlement has still never executed against
-our own host, and nobody but us has used `/verify` yet. The stranger test is the
-cheapest of the three and it is the user's, because it needs somebody who has not
-seen this project before.
+Then the product got a second source. The record is the owner's account of what
+its agent did, and a refusal left nothing behind in it. The payment network keeps
+its own account, and the two now meet: every payment the session made is in both,
+and neither refusal is. That moves the refusals off "the owner's claim" and onto
+"corroborated by the counterparty's record", which is one step closer to proof and
+still honestly labelled as one step closer.
+
+The three things this pass did **not** do, and will not pretend to have done: a
+refusal is still not a transaction the agent signed, settlement has still never
+executed against our own host, and nobody but us has used `/verify` yet. The
+stranger test is the cheapest of the three and it is the user's, because it needs
+somebody who has not seen this project before.

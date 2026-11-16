@@ -50,8 +50,9 @@ async function verify(url) {
       "verify-body",
       `${Callout({
         body:
-          "The payments below are the chain's. The refusals are the owner's claim. A refusal " +
-          "leaves no transaction, so there is nothing on chain to point at.",
+          "The payments below are the chain's. The refusals are corroborated by the Passport's " +
+          "own ledger, which holds every payment this session made and none for the refusals. " +
+          "They are not attested by the agent.",
       })}${VerificationPanel(verificationProps(proof))}`,
     );
     showSection("record", true);

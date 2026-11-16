@@ -28,7 +28,7 @@ export async function getProof(): Promise<Record<string, unknown>> {
  *
  * The log is fetched with the same SSRF guard as the web path (https only,
  * pinned public addresses, capped size and time). The payments are re-read
- * from the chain; the refusals are reported as the owner's claim, with the
+ * from the chain; the refusals are reported as the owner's account, with the
  * cheapest checkable reading of them.
  */
 export async function verifyRecord(input: {

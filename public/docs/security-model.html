@@ -61,8 +61,8 @@
         </h1>
         <p class="standfirst">
           Most of the record is checkable by someone who does not trust this program. One
-          part is not, and it is the part the product is about. This page is the whole of
-          that, in our own words.
+          part is only half-checkable, and it is the part the product is about. This page is
+          the whole of that, in our own words.
         </p>
       </header>
 
@@ -70,7 +70,10 @@
         <h2 id="model-h">The model</h2>
         <div class="prose">
           <div class="callout">
-            <strong>The payments are chain-verified. The refusals are the owner's claim.</strong>
+            <strong>
+              The payments are chain-verified. The refusals are corroborated by the payment
+              network's own ledger, but not attested by the agent.
+            </strong>
             That is the one asymmetry in the product, and it is deliberate that it is visible
             rather than buried.
           </div>
@@ -98,16 +101,28 @@
               hash chain, so the per-call cap and the total budget are covered by the
               signature. They cannot be edited without breaking the head.
             </li>
+            <li>
+              <strong>The refusals, against the payment network's own record.</strong> The
+              Kite Passport keeps a ledger of every x402 payment it settles, with the
+              transaction for each one, and of every spending session the owner approved with
+              a passkey. A refusal leaves no payment behind, so that ledger corroborates a
+              refusal by the absence of the thing a payment would have left, in a record this
+              project did not write. <a href="/evidence.json">/evidence.json</a> holds the
+              reconciliation for the recorded run: every attempt matched by session, address
+              and amount, with the disagreements counted.
+            </li>
           </ul>
 
           <h3>What a third party cannot check</h3>
           <ul>
             <li>
-              <strong>The refusals.</strong> A refusal leaves no transaction. It exists in the
-              signed log and in the Passport's error code (<code>session_rule_exceeded</code> and
-              <code>session_total_exceeded</code>). There is nothing on chain to point
-              at. The owner could rewrite the log and re-sign it; the payments would still
-              check out, and the refusals would be whatever the owner said they were.
+              <strong>The refusals, finally.</strong> The ledger shows that the network was
+              not charged for the two purchases the log says were refused. It does not say
+              why, and it is not a statement the agent signed: there is no transaction that
+              says "I was refused". The owner could rewrite the log and re-sign it, and the
+              ledger would still show only that no payment happened. Until the agent writes
+              an attestation transaction per refusal, that part of the record is the owner's
+              account, checked against someone else's silence.
             </li>
             <li>
               <strong>The link between the paying wallet and the agent's DID.</strong> Kite

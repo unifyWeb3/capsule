@@ -12,6 +12,7 @@ import { REPO_ROOT } from "../src/paths.js";
 import { loadMenu } from "../src/menu.js";
 import { planLimit } from "../src/limit-cost.js";
 import { attemptsFrom } from "../src/limit-api.js";
+import { loadLedger, reconcile } from "../src/ledger.js";
 
 async function main() {
   const receiptsPath = path.join(REPO_ROOT, "docs", "receipts.json");
@@ -143,6 +144,68 @@ async function main() {
       "the live Kite service catalog, snapshotted into docs/menu.json",
       "npm run menu",
       snapshotDate,
+    );
+  }
+
+  // The payment network's own ledger, checked against the recorded run. The
+  // numbers come from the reconciliation, which the test suite holds, so they
+  // move only if the capture or the record moves.
+  let ledgerEvidence: ReturnType<typeof reconcile> | null = null;
+  let ledgerDate = today;
+  try {
+    const ledger = await loadLedger();
+    if (ledger) {
+      ledgerEvidence = reconcile(receipts, ledger);
+      ledgerDate = ledger.captured_at.slice(0, 10);
+    }
+  } catch {
+    // A missing ledger leaves the claims as they were.
+  }
+  if (ledgerEvidence) {
+    const summary = ledgerEvidence.summary;
+    add(
+      "Attempts cross-checked against the payment network's ledger",
+      String(summary.attempts_checked),
+      "the recorded run's steps, matched to the Passport's own payment records",
+      "npm test",
+      ledgerDate,
+    );
+    add(
+      "Refusals that left no payment in the ledger",
+      String(summary.refusals_with_no_payment),
+      "the Passport's own payment records, which hold every payment the session made and none for the refusals",
+      "npm test",
+      ledgerDate,
+    );
+    add(
+      "Disagreements between the log and the ledger",
+      String(summary.disagreements),
+      "the reconciliation of the two records",
+      "npm test",
+      ledgerDate,
+    );
+    add(
+      "What the session spent, according to the ledger",
+      `$${ledgerEvidence.recorded.ledger_spent_usd}`,
+      "the sum of the payments the Passport records for that session",
+      "npm test",
+      ledgerDate,
+    );
+    add(
+      "How the session was approved",
+      ledgerEvidence.recorded.approval?.uv_attested
+        ? "passkey-attested"
+        : "not passkey-attested",
+      "the Passport's record of the session approval",
+      "npm test",
+      ledgerDate,
+    );
+    add(
+      "The endpoint refused under the tight cap, paid under the loose one",
+      summary.the_refused_endpoint_was_paid_under_the_larger_cap ? "yes" : "no",
+      "the ledger's payment for the same endpoint in the contrast run",
+      "npm test",
+      ledgerDate,
     );
   }
   add(

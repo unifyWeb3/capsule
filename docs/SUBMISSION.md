@@ -3,6 +3,14 @@
 Everything the form asks for, ready to paste. 21 fields, 12 required. **You publish
 the X post and submit the form: I do not.**
 
+> **Timing.** The stated deadline was **Nov 15, 2026, 23:59 UTC**, and it has passed.
+> At 03:0x UTC on Nov 16 the event page still carried "Submit now", its key-dates widget
+> still showed the build period as live, and the Typeform was still reachable, so the
+> form can still be filed. Whether a submission filed after the stated hour is accepted
+> is the organizers' call, and this pack does not pretend otherwise. The one deadline
+> requirement that is already met is the X post: it went out **Nov 14, 15:58 UTC**, a
+> day before the close. Everything below is ready to paste either way.
+
 The form takes **one** X post URL. The two drafts in the previous version of this
 pack have been merged into a single post that fits X's 280-character limit, with two
 optional replies in the same thread if you want the evidence and the tool mentioned.
@@ -97,11 +105,12 @@ and footer on all eight pages, the favicon, the touch icon, and the share card.
 > an answer needs and a pair of caps, solves for the cheapest basket of catalog
 > endpoints that fits inside them, names the cap that forbade each one, and prices
 > what was forbidden. The solver is exact enumeration over fact subsets, with no
-> model in the loop, and the recorded run is its regression test: given the same
-> catalog snapshot it arrives at the same **$0.051** and the same **20.4×**. A cover
-> is either demonstrated (the record shows the endpoint being chosen for that fact)
-> or declared (the merchant's own catalog text claims it), and a fact no merchant
-> sells is left unpriced rather than guessed.
+> model in the loop, and the recorded run is its regression test: given the catalog
+> of that day it arrives at the same **$0.051** and the same **20.4×**. Your own
+> facts are priced over the live Kite catalog, read over plain HTTPS with no key, so
+> your answer is today's answer. A cover is either demonstrated (the record shows
+> the endpoint being chosen for that fact) or declared (the merchant's own catalog
+> text claims it), and a fact no merchant sells is left unpriced rather than guessed.
 >
 > **It is a tool, not only a page.** The same verifier and the same calculator are
 > published on npm as `capsule-mcp` (`npx -y capsule-mcp`), so an agent can check a
@@ -109,17 +118,26 @@ and footer on all eight pages, the favicon, the touch icon, and the share card.
 > asks for a session. No wallet, no account, no session: the URL of the log is the
 > credential.
 >
-> The record has three independent anchors. The refusals were decided by the
+> The record has four independent anchors. The refusals were decided by the
 > Passport, not by us. The payments are transactions on Base, re-read from the chain
 > at request time by `/proof.json`, with the sender asserted to be the session's own
 > wallet. And the record itself is hash-chained and signed by the agent's runtime
 > key, which Kite publishes against the agent's DID in its public directory, so the
 > signature can be checked against Kite rather than against us.
 >
-> One thing is deliberately left open: the refusals are the owner's claim, not a
-> chain fact, because a refusal leaves no transaction. We say so on our own
-> security-model page rather than in a footnote. Closing it is one attestation
-> transaction per refusal.
+> **And the refusals have a second record that is not ours.** The Passport keeps a
+> ledger of every x402 payment it settles, with the transaction for each one, and
+> of every spending session the owner approved with a passkey. A refusal leaves no
+> payment behind, so that ledger corroborates a refusal by the absence of the thing
+> a payment would have left, in a record this project did not write.
+> `GET /evidence.json` holds the reconciliation: for the recorded run the two
+> accounts agree on all **7** attempts, the **2** refusals left no payment, the
+> **0** disagreements, and the same **$0.05** endpoint was paid under the larger cap.
+>
+> One thing is deliberately left open: a refusal is still not a chain fact, because
+> no transaction says "I was refused". It is the owner's account, checked against
+> someone else's silence. We say so on our own security-model page rather than in a
+> footnote. Closing it is one attestation transaction per refusal.
 >
 > `npm run verify` runs sixteen checks against the live deployment, including that
 > the signature recovers to the address Kite publishes and that a tampered record
@@ -211,10 +229,19 @@ stop and fix it: a video with a stale number is worse than no video.
 
 ## Done since the last version of this pack
 
+- The **payment network's ledger, checked against the record**: `/evidence.json`
+  reconciles the recorded run against the Passport's own payment records. The two
+  accounts agree on all **7** attempts, the **2** refusals left no payment, **0**
+  disagreements, the totals agree at **$0.002**, and the session was approved by a
+  passkey. The capture is redacted and says what it kept out.
+- The **calculator prices your facts over today's catalog**: the Kite service
+  catalog is a public read, so `/cost` prices a visitor's own facts over the live
+  catalog and the recorded run over the catalog of its day. `GET /api/limit-cost`
+  takes `?catalog=live|snapshot|auto`.
 - The **limit calculator**: `/cost` prices a set of caps for a set of facts over the
-  same catalog snapshot the run used, with an exact solver and the recorded run as
-  its regression test. The same answer is `GET /api/limit-cost` and the
-  `price_my_limit` tool in `capsule-mcp`.
+  catalog, with an exact solver and the recorded run as its regression test. The
+  same answer is `GET /api/limit-cost` and the `price_my_limit` tool in
+  `capsule-mcp`.
 - The **90-second video is published**: `https://youtu.be/nT8bjhT7WYY`.
 - The **X post is published**, one post tagging `@openservai`:
   `https://x.com/oxunify/status/2121633772202602884`.

@@ -15,6 +15,12 @@ into prose that is not in this file.
 | What the limit cost, priced by the solver | $0.051 against a $0.0025 budget (20.4x) | the solver over the same catalog snapshot, checked against the recorded run by the test suite | `npm test` | 2026-11-11 |
 | Facts no merchant in the catalog claims | 1 | the solver's coverage rule, over the catalog snapshot | `npm test` | 2026-11-11 |
 | Endpoints in the catalog snapshot | 29 | the live Kite service catalog, snapshotted into docs/menu.json | `npm run menu` | 2026-11-11 |
+| Attempts cross-checked against the payment network's ledger | 7 | the recorded run's steps, matched to the Passport's own payment records | `npm test` | 2026-11-15 |
+| Refusals that left no payment in the ledger | 2 | the Passport's own payment records, which hold every payment the session made and none for the refusals | `npm test` | 2026-11-15 |
+| Disagreements between the log and the ledger | 0 | the reconciliation of the two records | `npm test` | 2026-11-15 |
+| What the session spent, according to the ledger | $0.002 | the sum of the payments the Passport records for that session | `npm test` | 2026-11-15 |
+| How the session was approved | passkey-attested | the Passport's record of the session approval | `npm test` | 2026-11-15 |
+| The endpoint refused under the tight cap, paid under the loose one | yes | the ledger's payment for the same endpoint in the contrast run | `npm test` | 2026-11-15 |
 | Facts the recorded run needed | 5 | the counterfactual in the decision log | `npm run receipts` | 2026-11-12 |
 | Decision log algorithm | keccak-256 | the log's own header | `npm run verify` | 2026-11-12 |
 | Decision log records | 4 | the log | `npm run verify` | 2026-11-12 |

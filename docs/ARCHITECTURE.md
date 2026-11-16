@@ -47,6 +47,8 @@ left alone.
 | 12 | `mcp/server.ts`: the verifier as an MCP tool (`verify_record`, `get_proof`) | §4 | **BUILT**: stdio MCP, zero custody; integration-tested against the live record |
 | 13 | The limit calculator: the price of a limit, solved rather than asserted | §4.1 | **BUILT**: `src/limit-cost.ts` (the solver), `src/limit-api.ts` (the service), `GET /api/limit-cost`, `/cost`, and `price_my_limit` in the MCP package. Exact enumeration over the subsets of the facts; the recorded run is its regression test, and the two agree at `$0.051` and `20.4x` |
 | 14 | The npm package: the verifier and the calculator as one installable tool | §4 | **BUILT**: `packages/capsule-mcp/`, built from this repository's own modules and guarded by a publish check. **Not published yet**: npm's two-factor policy is the only thing in the way, and the account has no second factor on the write (`npm profile get 2fa` answers `tfa: false`) |
+| 15 | The live catalog: today's prices instead of a photograph of them | §4.1 | **BUILT**: `src/catalog-live.ts` reads the Kite service discovery endpoint over plain HTTPS, with a timeout, one retry, a five-minute cache, and a fallback to the snapshot that *says* in the answer that it fell back. Only endpoints that settle in USDC on Base mainnet are eligible, and an endpoint the catalog does not price is not priced here |
+| 16 | The payment network's ledger, checked against the record | §4.1 | **BUILT**: `src/ledger.ts` reconciles the recorded run against the Passport's own payment records, matching by session, address and amount, and counting its own disagreements. The capture is `scripts/capture-passport-ledger.mjs`, which redacts the account identifiers and records what it kept out |
 
 **Why items 6–10 are not built.** They are the hosted-record tier, and the hosted
 tier has no customer. `docs/BRIEF.md` records the payment evidence as level 5, our
@@ -92,11 +94,13 @@ Plane A a second shape that can be sold.
 are derived from it (`src/artifact.ts:43` `buildArtifact()` → `src/records.ts:53`
 `buildReceipts()`), and can always be rebuilt (`npm run receipts`,
 `scripts/rebuild-receipts.ts:24`). The payments are verified by re-reading the chain at
-request time (`src/proof.ts:271` `verifyStep()`). The refusals are the owner's claim and
-cannot be chain-verified, because a refusal leaves no transaction. Any design that stores
-a refusal somewhere with more authority than the log has **made the product dishonest**,
-and the README's "The asymmetry" section (`README.md:184-204`) exists precisely to prevent
-that. So the database schema in §5 stores them with the same labels they carry today.
+request time (`src/proof.ts:271` `verifyStep()`). The refusals are the owner's account and
+cannot be chain-verified, because a refusal leaves no transaction. They are corroborated
+for our own run by the payment network's own ledger (`src/ledger.ts`), which is a second
+source and not a signature. Any design that stores a refusal somewhere with more authority
+than the log has **made the product dishonest**, and the README's asymmetry section exists
+precisely to prevent that. So the database schema in §5 stores them with the same labels
+they carry today.
 
 ---
 
@@ -568,6 +572,24 @@ measured: `$0.051` against a `$0.0025` budget, `20.4x`. The solver is exact
 enumeration over the subsets of the facts, and the recorded run is its regression
 test (`src/limit-cost.ts`, `test/limit-cost.test.ts`).
 
+**Which catalog.** The recorded run is priced over `docs/menu.json`, the catalog of
+the day it ran, because a run's prices belong to its day. A caller's own facts are
+priced over the **live** catalog, read from the Kite service discovery endpoint over
+plain HTTPS with no key, no account and no payment. `?catalog=live|snapshot|auto`
+overrides the choice. When the live read fails the answer falls back to the snapshot
+and says so in its notes, because a page that quietly showed yesterday's prices
+would be worse than one that shows them and admits it.
+
+**Public, unauthenticated, rate-limited: the second source.**
+
+| Method | Path | Request | Response | Status | Cache |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/evidence.json` | none | the recorded run reconciled against the payment network's own ledger | 200 / 200 `{"status":"no_ledger_captured"}` | `public, max-age=60` **(new)** |
+
+The reconciliation matches a log step to a ledger payment by session, address and
+amount. A paid step must have a payment; a refused step must not. The disagreements
+are counted and published rather than smoothed over.
+
 **Authenticated: the owner.** `Authorization: Bearer <owner token>`; the token is stored
 as a SHA-256 hash, never in the clear.
 
@@ -714,14 +736,15 @@ What it does **not** check, and what a reader must be told:
 | Not checked | Consequence |
 | --- | --- |
 | that the log's author is who they say | the log is the author's claim; we check what is checkable |
-| that the **prices** in the log are the real prices | the refusal prices are the owner's claim; this is the asymmetry (`README.md:184-204`) |
+| that the **prices** in the log are the real prices | the refusal prices are the owner's account; this is the asymmetry (`README.md`, "The four anchors") |
 | that the **payer** is the agent's session wallet | on the third-party path `expectedSender` is `null` (`src/verify-log.ts:290`), so we prove "a transfer of the expected amount exists", not "their wallet paid it". The owner's own record *does* assert the sender (`src/app.ts:121`). |
 | that the log is fresh | we re-fetch after the cache TTL |
 | that the author has not rewritten the log | only a Capsule-format log gets its hash chain checked, and that is a bonus (`src/verify-log.ts:206-214`) |
 
 The honest framing, already used on `/docs/security-model`: **the payments are
-chain-verified; the refusals are the owner's claim; the hash chain is a bonus for people
-who write in our format.**
+chain-verified; the refusals are corroborated by the payment network's own ledger but
+not attested by the agent; the hash chain is a bonus for people who write in our
+format.**
 
 ### 4.5 The volume and cost story
 
@@ -781,7 +804,7 @@ that a customer can open without trusting the owner's infrastructure.
 self-published, and the audit trail of verifications we performed for anybody.
 
 It is **not** the source of truth for anything that already has one. The log stays a
-file. The chain stays the chain. The refusals stay the owner's claim.
+file. The chain stays the chain. The refusals stay the owner's account.
 
 ### 5.2 The schema
 
@@ -984,7 +1007,7 @@ Rules:
 | **The chain** | It is not a database we own. It is the source of truth for every payment, and we read it live at request time. Storing "this transfer was confirmed" in Postgres would create a second, weaker source of truth that could disagree with the chain, and the whole point of `/proof.json` is that it does not trust our own copy (`src/app.ts:166-167`). `chain_verdict` is a **cache of an immutable fact**, not a copy of a mutable one. |
 | **The chain head** | It moves every 2 seconds. It is cached for 5 seconds in one row and is never a record of anything. |
 | **The log format** | It is a file format a third party can write without us (`public/log-writer.mjs`, 114 lines; `/docs/format`; a test writes a log with the published writer and verifies it with our implementation). If the database held a row per decision, our schema would *become* the format, and a third party's log would have to be in our schema to be verified, which is the exact opposite of the product's claim. The hosted tier stores the log's **bytes** and the derived receipts; it does not model a decision. |
-| **The refusals** | They are the owner's claim (`README.md:184-204`). They live in the log, and the receipts carry them next to the `chain_checks` with the same provenance labels the proof payload already uses. Putting them in a table with the payments would present them as equally proven. A database does not make a refusal more true; it only makes it look more official. |
+| **The refusals** | They are the owner's account (`README.md`, "The four anchors"). They live in the log, and the receipts carry them next to the `chain_checks` with the same provenance labels the proof payload already uses. Putting them in a table with the payments would present them as equally proven. A database does not make a refusal more true; it only makes it look more official. The payment network's ledger corroborates them for our own run (`src/ledger.ts`), and that ledger is also a file, not a row we own. |
 | **The Kite Passport session and the delegation** | The cap is enforced in Kite's backend; the session is theirs. We store the session id and the two caps **as the owner published them in their signed log**; a copy of a claim, tagged as a claim (`record.session_id`, `record.max_*`). We never re-read the Passport's authoritative state, because we could not verify the copy anyway. |
 | **The agent's signing key** | `.kite-passport/runtime.key` never leaves the machine that holds it. It signs the head (`src/attest.ts:109`); it is never uploaded, and `.vercelignore` keeps it out of the deployment (`docs/ENGINEERING-REVIEW.md:74-85`). |
 
@@ -1019,6 +1042,7 @@ Rules:
 | **A third party's proof, durable** | Postgres `verification` | 30 d | re-verification | the audit row |
 | **A hosted record** | Postgres `record` + edge | 60 s at the edge | unpublish | the source is the row |
 | **The catalog snapshot** | `docs/menu.json` in the bundle | forever | `npm run menu` | `src/menu.ts` |
+| **The live catalog** | in process, per instance | 5 minutes | the read itself | `src/catalog-live.ts`; the answer carries the moment it was read |
 
 ### 6.3 What is **never** cached
 
@@ -2019,10 +2043,11 @@ The chain is not a database we own; it is the source of truth for the payments a
 it live. The log format is a file format a third party writes without us, so the hosted
 tier stores the log's **exact bytes** and the derived receipts, never a row per
 decision, because a table schema that models a decision makes our schema the format and
-breaks the product's central claim. And the refusals stay the owner's claim: they live in
+breaks the product's central claim. And the refusals stay the owner's account: they live in
 the log, they are priced in the receipts, they sit next to the `chain_checks` with the
 same labels they carry today. A row in Postgres would make them look like the payments,
-and that is the one dishonesty this README is careful about (`README.md:184-204`).
+and that is the one dishonesty this README is careful about (see the README's "The four
+anchors").
 
 **3. Two tiers, one code path: "bring your own log URL" is free and open; "we host your
 record" is the paid one.**

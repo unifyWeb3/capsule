@@ -63,13 +63,20 @@ re-signs the new head with the agent's key.
 | --- | --- | --- |
 | These payments happened | USDC transfers on Base, re-read from the chain at request time, with the sender asserted to be the session's own wallet | **verified by the chain** |
 | This record is the one we wrote | the head is signed with the secp256k1 key Kite publishes for the agent's DID; the key is fetched live from `passport.prod.gokite.ai` | **verified by signature** |
-| These purchases were refused | the Passport's own error codes and messages | **the owner's claim** — a refusal leaves no transaction, so there is nothing on chain to point at |
+| These purchases were refused | the Passport's own error codes and messages, checked against the Passport's own ledger of every payment it settles (`/evidence.json`, captured in `docs/passport-ledger.json`) | **corroborated, not attested** — a refusal leaves no transaction, so there is nothing on chain to point at; the ledger corroborates it by the absence of the payment a paid attempt would have left, in a record this project did not write |
 
 That last row is the one asymmetry in the product, and it is deliberate that it is
 visible rather than buried. The payments are checked by the chain; the refusals are
 the owner's word, and the reason they are the valuable half is exactly the reason they
 are the unproven half: nothing else records what an agent was refused, at the real
 price, against the budget the user signed with a passkey.
+
+The ledger narrows that gap without closing it. It shows that the network was not
+charged for the two purchases the log says were refused, and it shows that the same
+$0.05 endpoint was paid for under the larger cap. It does not say why, and it is not
+a statement the agent signed: there is no transaction that says "I was refused". The
+owner could rewrite the log and re-sign it, and the ledger would still show only that
+no payment happened.
 
 The fix is an attestation transaction per refusal, signed by the agent. It needs a
 wallet and a few cents of gas, and it has not been done.

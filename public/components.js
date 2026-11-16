@@ -130,7 +130,7 @@ const EXAMPLES = [
     name: "Callout",
     props: "{ title?: string, body: string, tone?: 'warn' | 'quiet' }",
     example: Callout({
-      title: "The payments are chain-verified. The refusals are the owner's claim.",
+      title: "The payments are chain-verified. The refusals are corroborated, not attested.",
       body: "A payment leaves a transaction, so anyone can re-read it. A refusal leaves nothing behind.",
     }),
   },
